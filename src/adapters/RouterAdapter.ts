@@ -50,4 +50,31 @@ export interface RouterAdapter {
 
   /** Escutar eventos gerados pelo adaptador em tempo real */
   subscribeEvents(callback: (event: NetworkEvent) => void): () => void;
+
+  /** Autenticar com credenciais de Administrador no roteador */
+  loginAdmin(password: string, username?: string): Promise<{ success: boolean; error?: string }>;
+
+  /** Encerrar sessão de Administrador */
+  logoutAdmin(): Promise<void>;
+
+  /** Reiniciar o hardware do roteador */
+  rebootRouter(): Promise<{ success: boolean; error?: string }>;
+
+  /** Expulsar/desconectar dispositivo da rede Wi-Fi */
+  kickDevice(deviceId: string): Promise<{ success: boolean; error?: string }>;
+
+  /** Fixar ou liberar endereço IP estático para o dispositivo */
+  setStaticIp(deviceId: string, isStatic: boolean): Promise<{ success: boolean; error?: string }>;
+
+  /** Definir prioridade de tráfego QoS para o dispositivo */
+  setTrafficPriority(deviceId: string, priority: 'high' | 'normal' | 'low'): Promise<{ success: boolean; error?: string }>;
+
+  /** Salvar anotações do administrador e proprietário do dispositivo */
+  setDeviceNotes(deviceId: string, notes: string, ownerName?: string): Promise<boolean>;
+
+  /** Enviar pacote mágico Wake-on-LAN para ligar o computador */
+  sendWakeOnLan(deviceId: string): Promise<{ success: boolean; message?: string; error?: string }>;
+
+  /** Escanear portas de rede abertas no dispositivo */
+  scanDevicePorts(deviceId: string): Promise<{ openPorts: number[]; portsScanned: number }>;
 }

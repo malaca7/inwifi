@@ -230,6 +230,129 @@ class NetworkService {
     return res;
   }
 
+  /** Autenticação Admin no roteador */
+  async loginAdmin(password: string, username = 'admin'): Promise<{ success: boolean; error?: string }> {
+    const res = await this.currentAdapter.loginAdmin(password, username);
+    if (res.success) {
+      await this.refreshData();
+    }
+    return res;
+  }
+
+  /** Encerrar sessão de Admin */
+  async logoutAdmin(): Promise<void> {
+    await this.currentAdapter.logoutAdmin();
+    await this.refreshData();
+  }
+
+  /** Reiniciar o roteador fisicamente */
+  async rebootRouter(): Promise<{ success: boolean; error?: string }> {
+    return await this.currentAdapter.rebootRouter();
+  }
+
+  /** Expulsar aparelho do sinal Wi-Fi (Kick) */
+  async kickDevice(deviceId: string): Promise<{ success: boolean; error?: string }> {
+    const res = await this.currentAdapter.kickDevice(deviceId);
+    if (res.success) {
+      const dev = this.devices.find(d => d.id === deviceId);
+      if (dev) {
+        dev.kickCount = (dev.kickCount || 0) + 1;
+        this.notify();
+      }
+    }
+    return res;
+  }
+
+  /** Fixar ou liberar endereço IP estático no roteador */
+  async setStaticIp(deviceId: string, isStatic: boolean): Promise<{ success: boolean; error?: string }> {
+    const res = await this.currentAdapter.setStaticIp(deviceId, isStatic);
+    if (res.success) {
+      const dev = this.devices.find(d => d.id === deviceId);
+      if (dev) {
+        dev.isStaticIp = isStatic;
+        this.notify();
+      }
+    }
+    return res;
+  }
+
+  /** Definir prioridade de tráfego QoS */
+  async setTrafficPriority(deviceId: string, priority: 'high' | 'normal' | 'low'): Promise<{ success: boolean; error?: string }> {
+    const res = await this.currentAdapter.setTrafficPriority(deviceId, priority);
+    if (res.success) {
+      const dev = this.devices.find(d => d.id === deviceId);
+      if (dev) {
+        dev.priority = priority;
+        this.notify();
+      }
+    }
+    return res;
+  }
+
+  /** Salvar anotações e proprietário do dispositivo */
+  async setDeviceNotes(deviceId: string, notes: string, ownerName?: string): Promise<boolean> {
+    const success = await this.currentAdapter.setDeviceNotes(deviceId, notes, ownerName);
+    if (success) {
+      const dev = this.devices.find(d => d.id === deviceId);
+      if (dev) {
+        dev.notes = notes;
+        if (ownerName !== undefined) dev.ownerName = ownerName;
+        this.notify();
+      }
+    }
+    return success;
+  }
+
+  /** Enviar pacote mágico Wake-on-LAN para ligar o PC */
+  async sendWakeOnLan(deviceId: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return await this.currentAdapter.sendWakeOnLan(deviceId);
+  }
+
+  /** Escanear portas abertas no dispositivo */
+  async scanDevicePorts(deviceId: string): Promise<{ openPorts: number[]; portsScanned: number }> {
+    return await this.currentAdapter.scanDevicePorts(deviceId);
+  }
+
+  /** Ação em massa: Bloquear múltiplos */
+  async bulkBlockDevices(deviceIds: string[]): Promise<number> {
+    let count = 0;
+    for (const id of deviceIds) {
+      const res = await this.blockDevice(id);
+      if (res.success) count++;
+    }
+    return count;
+  }
+
+  /** Ação em massa: Liberar múltiplos */
+  async bulkUnblockDevices(deviceIds: string[]): Promise<number> {
+    let count = 0;
+    for (const id of deviceIds) {
+      const res = await this.unblockDevice(id);
+      if (res.success) count++;
+    }
+    return count;
+  }
+
+  /** Ação em massa: Pausar múltiplos */
+  async bulkPauseDevices(deviceIds: string[]): Promise<number> {
+    let count = 0;
+    for (const id of deviceIds) {
+      const res = await this.pauseDevice(id);
+      if (res.success) count++;
+    }
+    return count;
+  }
+
+  /** Ação em massa: Expulsar múltiplos */
+  async bulkKickDevices(deviceIds: string[]): Promise<number> {
+    let count = 0;
+    for (const id of deviceIds) {
+      const res = await this.kickDevice(id);
+      if (res.success) count++;
+    }
+    return count;
+  }
+
   /** Recarrega telemetria da rede */
   refreshTelemetry() {
     this.refreshData();

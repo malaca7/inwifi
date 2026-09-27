@@ -2,9 +2,10 @@ import React from 'react';
 import { 
   LayoutDashboard, Laptop2, Share2, Bell, 
   Activity, ShieldAlert, Calendar, Router, 
-  Settings, ChevronRight, CheckCircle2, XCircle
+  Settings, ChevronRight, CheckCircle2, XCircle, Lock, KeyRound
 } from 'lucide-react';
 import { RouterCapabilities } from '../../types';
+import { networkService } from '../../services/networkService';
 
 export type NavTab = 
   | 'dashboard'
@@ -30,7 +31,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   capabilities,
   unreadAlertsCount
 }) => {
-  const menuItems: Array<{ id: NavTab; label: string; icon: React.ReactNode; badge?: number }> = [
+  const routerInfo = networkService.getRouterInfo();
+  const isAdmin = routerInfo?.isAdminAuthenticated;
+
+  const menuItems: Array<{ id: NavTab; label: string; icon: React.ReactNode; badge?: number; extraBadge?: React.ReactNode }> = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'devices', label: 'Dispositivos', icon: <Laptop2 className="w-5 h-5" /> },
     { id: 'topology', label: 'Topologia da Rede', icon: <Share2 className="w-5 h-5" /> },
@@ -38,7 +42,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'traffic', label: 'Consumo & Tráfego', icon: <Activity className="w-5 h-5" /> },
     { id: 'access', label: 'Controle de Acesso', icon: <ShieldAlert className="w-5 h-5" /> },
     { id: 'schedules', label: 'Agendamentos', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'routers', label: 'Roteadores', icon: <Router className="w-5 h-5" /> },
+    { 
+      id: 'routers', 
+      label: 'Roteador Gateway', 
+      icon: <Router className="w-5 h-5" />,
+      extraBadge: isAdmin ? (
+        <span className="p-1 rounded bg-emerald-500/20 text-emerald-400" title="Admin Autenticado">
+          <Lock className="w-3 h-3" />
+        </span>
+      ) : (
+        <span className="p-1 rounded bg-amber-500/20 text-amber-400 animate-pulse" title="Admin Desconectado">
+          <KeyRound className="w-3 h-3" />
+        </span>
+      )
+    },
     { id: 'settings', label: 'Configurações', icon: <Settings className="w-5 h-5" /> }
   ];
 
@@ -48,8 +65,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         
         {/* Navigation list */}
         <nav className="space-y-1">
-          <div className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Centro de Controle LAN
+          <div className="px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between">
+            <span>Centro de Controle LAN</span>
+            <span className="text-[9px] font-mono text-cyan-400">1 Roteador</span>
           </div>
           {menuItems.map((item) => {
             const isActive = currentTab === item.id;
@@ -71,6 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  {item.extraBadge}
                   {item.badge !== undefined && item.badge > 0 && (
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white shadow">
                       {item.badge}
@@ -86,47 +105,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Adapter Capabilities Mini Card */}
         <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-300">Capacidades Ativas</span>
-            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">
-              Router Adapter
+            <span className="text-[11px] font-bold text-slate-300">Ferramentas Hardware</span>
+            <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
+              isAdmin 
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+            }`}>
+              {isAdmin ? 'Admin Ativo' : 'Somente Leitura'}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-1.5 text-[10px]">
             <div className="flex items-center gap-1.5 text-slate-400">
-              {capabilities.deviceDiscovery ? (
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-              ) : (
-                <XCircle className="w-3 h-3 text-slate-600" />
-              )}
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
               <span>Descoberta</span>
             </div>
 
             <div className="flex items-center gap-1.5 text-slate-400">
-              {capabilities.blocking ? (
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-              ) : (
-                <XCircle className="w-3 h-3 text-slate-600" />
-              )}
-              <span>Bloqueio</span>
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <span>Bloqueio MAC</span>
             </div>
 
             <div className="flex items-center gap-1.5 text-slate-400">
-              {capabilities.trafficStats ? (
+              {capabilities.deviceKick ? (
                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
               ) : (
                 <XCircle className="w-3 h-3 text-slate-600" />
               )}
-              <span>Telemetria</span>
+              <span>Kick Wi-Fi</span>
             </div>
 
             <div className="flex items-center gap-1.5 text-slate-400">
-              {capabilities.speedLimit ? (
+              {capabilities.staticIpReservation ? (
                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
               ) : (
                 <XCircle className="w-3 h-3 text-slate-600" />
               )}
-              <span>Limite Banda</span>
+              <span>IP Estático</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-slate-400">
+              {capabilities.portScanner ? (
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              ) : (
+                <XCircle className="w-3 h-3 text-slate-600" />
+              )}
+              <span>Scanner Portas</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-slate-400">
+              {capabilities.wakeOnLan ? (
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              ) : (
+                <XCircle className="w-3 h-3 text-slate-600" />
+              )}
+              <span>Wake-on-LAN</span>
             </div>
           </div>
         </div>

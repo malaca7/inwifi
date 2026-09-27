@@ -6,7 +6,8 @@ import {
   Pause, Play, Gauge, Clock, Wifi, HardDrive, 
   ArrowDownCircle, ArrowUpCircle, Info, Activity,
   Search, Cpu, Smartphone, Laptop, Tv, HelpCircle,
-  Radio, Zap, Terminal, Sparkles, AlertCircle
+  Radio, Zap, Terminal, Sparkles, AlertCircle,
+  Power, Server, Tag, FileText, CheckCircle2
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -29,6 +30,25 @@ interface DeviceDetailsModalProps {
   onUpdated: () => void;
 }
 
+const COMMON_PORT_DESCRIPTIONS: Record<number, string> = {
+  21: 'FTP (Transferência de Arquivos)',
+  22: 'SSH (Terminal Remoto Seguro)',
+  23: 'Telnet',
+  53: 'DNS (Servidor de Nomes)',
+  80: 'HTTP (Servidor Web / Interface)',
+  135: 'RPC (Microsoft Remote Procedure)',
+  139: 'NetBIOS (Rede Windows)',
+  443: 'HTTPS (Web Criptografado)',
+  445: 'SMB (Compartilhamento de Pastas Windows)',
+  3389: 'RDP (Área de Trabalho Remota)',
+  5000: 'UPnP / Synology / Docker',
+  5173: 'Vite Dev Server',
+  7000: 'AirPlay (Apple Cast)',
+  8008: 'Google Cast / Chromecast',
+  8080: 'HTTP Proxy / Web Alternativo',
+  8443: 'HTTPS Alternativo'
+};
+
 export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   device,
   isOpen,
@@ -40,17 +60,33 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   const [customNameInput, setCustomNameInput] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showConfirmBlock, setShowConfirmBlock] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'identify' | 'history' | 'qos'>('identify');
-  const [speedLimitValue, setSpeedLimitValue] = useState<string>('');
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'identify' | 'tools' | 'config' | 'access' | 'traffic'>('identify');
+  
+  // Admin Notes & Owner state
+  const [ownerInput, setOwnerInput] = useState('');
+  const [notesInput, setNotesInput] = useState('');
+  const [notesSaved, setNotesSaved] = useState(false);
 
   // Live Ping state
   const [pingRunning, setPingRunning] = useState(false);
   const [pingResult, setPingResult] = useState<PingResult | null>(null);
 
+  // Port Scan state
+  const [portScanRunning, setPortScanRunning] = useState(false);
+  const [portScanResults, setPortScanResults] = useState<{ openPorts: number[]; portsScanned: number } | null>(null);
+
+  // WoL & Kick feedback
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
   useEffect(() => {
     if (device && isOpen) {
       setPingResult(null);
+      setPortScanResults(null);
+      setActionSuccess(null);
+      setActionError(null);
+      setOwnerInput(device.ownerName || '');
+      setNotesInput(device.notes || '');
       // Auto run ping diagnostic once modal opens
       handleRunPing(device.ip);
     }
@@ -62,6 +98,11 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   const isRandomMac = isRandomizedMac(device.mac);
   const quickSuggestions = getQuickNamingSuggestions(device);
   const identGuide = getIdentificationGuide(device);
+
+  const showSuccessFeedback = (msg: string) => {
+    setActionSuccess(msg);
+    setTimeout(() => setActionSuccess(null), 4000);
+  };
 
   const copyToClipboard = (text: string, field: string) => {
     copyTextSafe(text);
@@ -79,6 +120,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     await networkService.renameDevice(device.id, finalName);
     setIsEditingName(false);
     onUpdated();
+    showSuccessFeedback('Identificação atualizada!');
   };
 
   const handleApplySuggestion = async (suggestion: string) => {
@@ -97,11 +139,72 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     }
   };
 
+  const handleRunPortScan = async () => {
+    setPortScanRunning(true);
+    setPortScanResults(null);
+    try {
+      const res = await networkService.scanDevicePorts(device.id);
+      setPortScanResults(res);
+      showSuccessFeedback(`Varredura concluída: ${res.openPorts.length} porta(s) aberta(s) encontrada(s).`);
+    } catch {
+      setActionError('Falha ao escanear portas do dispositivo.');
+    } finally {
+      setPortScanRunning(false);
+    }
+  };
+
+  const handleSendWakeOnLan = async () => {
+    const res = await networkService.sendWakeOnLan(device.id);
+    if (res.success) {
+      showSuccessFeedback(res.message || 'Pacote mágico Wake-on-LAN enviado!');
+    } else {
+      setActionError(res.error || 'Erro ao enviar Wake-on-LAN.');
+    }
+  };
+
+  const handleKickDevice = async () => {
+    const res = await networkService.kickDevice(device.id);
+    if (res.success) {
+      showSuccessFeedback(`Quadro de desconexão enviado. ${device.customName || device.originalHostname} forçado a reconectar.`);
+      onUpdated();
+    } else {
+      setActionError(res.error || 'Erro ao expulsar aparelho do Wi-Fi.');
+    }
+  };
+
+  const handleToggleStaticIp = async () => {
+    const newStatus = !device.isStaticIp;
+    const res = await networkService.setStaticIp(device.id, newStatus);
+    if (res.success) {
+      showSuccessFeedback(newStatus ? `IP ${device.ip} fixado permanentemente no DHCP!` : `Reserva estática liberada.`);
+      onUpdated();
+    } else {
+      setActionError(res.error || 'Erro ao alterar IP estático.');
+    }
+  };
+
+  const handleSetPriority = async (p: 'high' | 'normal' | 'low') => {
+    const res = await networkService.setTrafficPriority(device.id, p);
+    if (res.success) {
+      showSuccessFeedback(`Prioridade QoS atualizada para: ${p === 'high' ? 'ALTA (Gamer/Streaming)' : p === 'normal' ? 'NORMAL' : 'BAIXA'}.`);
+      onUpdated();
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    await networkService.setDeviceNotes(device.id, notesInput, ownerInput);
+    setNotesSaved(true);
+    setTimeout(() => setNotesSaved(false), 2500);
+    onUpdated();
+    showSuccessFeedback('Notas e proprietário salvos no sistema!');
+  };
+
   const handleToggleBlock = async () => {
     setActionError(null);
     if (device.status === 'blocked') {
       const res = await networkService.unblockDevice(device.id);
       if (!res.success) setActionError(res.error || 'Erro ao desbloquear');
+      else showSuccessFeedback('Dispositivo liberado no roteador.');
       onUpdated();
     } else {
       setShowConfirmBlock(true);
@@ -112,6 +215,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     setShowConfirmBlock(false);
     const res = await networkService.blockDevice(device.id);
     if (!res.success) setActionError(res.error || 'Erro ao bloquear');
+    else showSuccessFeedback('Dispositivo bloqueado no roteador.');
     onUpdated();
   };
 
@@ -120,18 +224,12 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     if (device.status === 'paused') {
       const res = await networkService.resumeDevice(device.id);
       if (!res.success) setActionError(res.error || 'Erro ao retomar conexão');
+      else showSuccessFeedback('Conexão retomada.');
     } else {
       const res = await networkService.pauseDevice(device.id);
       if (!res.success) setActionError(res.error || 'Erro ao pausar conexão');
+      else showSuccessFeedback('Conexão temporariamente pausada.');
     }
-    onUpdated();
-  };
-
-  const handleSaveSpeedLimit = async () => {
-    setActionError(null);
-    const num = speedLimitValue ? parseInt(speedLimitValue, 10) : null;
-    const res = await networkService.setSpeedLimit(device.id, num);
-    if (!res.success) setActionError(res.error || 'Erro ao configurar limite');
     onUpdated();
   };
 
@@ -212,6 +310,18 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                     </span>
                   )}
 
+                  {device.isStaticIp && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      IP FIXO DHCP
+                    </span>
+                  )}
+
+                  {device.priority === 'high' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      GAMER / ALTA PRIORIDADE
+                    </span>
+                  )}
+
                   <span className="font-mono text-cyan-400 font-semibold">{device.ip}</span>
                   <span className="text-slate-600">•</span>
                   <span className="font-mono text-slate-400">{device.mac}</span>
@@ -244,69 +354,90 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
             </button>
           </div>
 
-          {/* Action Error alert if any */}
+          {/* Feedback alerts */}
+          {actionSuccess && (
+            <div className="p-3 mx-6 mt-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-2 animate-fade-in">
+              <Check className="w-4 h-4 flex-shrink-0" />
+              <span>{actionSuccess}</span>
+            </div>
+          )}
+
           {actionError && (
             <div className="p-4 mx-6 mt-4">
               <CapabilityNotice featureName="Operação de Rede" reason={actionError} />
             </div>
           )}
 
-          {/* Navigation Tabs */}
+          {/* Navigation Tabs (5 Rich Tabs) */}
           <div className="flex border-b border-slate-800/80 px-6 bg-slate-950/40 overflow-x-auto">
             <button
               onClick={() => setActiveTab('identify')}
-              className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 flex-shrink-0 ${
+              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
                 activeTab === 'identify'
                   ? 'border-brand-500 text-brand-400'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               <Search className="w-4 h-4 text-brand-400" />
-              Identificação & Fabricante
+              Identificação & OUI
             </button>
+
             <button
-              onClick={() => setActiveTab('overview')}
-              className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 flex-shrink-0 ${
-                activeTab === 'overview'
+              onClick={() => setActiveTab('tools')}
+              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+                activeTab === 'tools'
+                  ? 'border-brand-500 text-brand-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Zap className="w-4 h-4 text-amber-400" />
+              Super Ferramentas
+            </button>
+
+            <button
+              onClick={() => setActiveTab('config')}
+              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+                activeTab === 'config'
+                  ? 'border-brand-500 text-brand-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Server className="w-4 h-4 text-cyan-400" />
+              Rede & Proprietário
+            </button>
+
+            <button
+              onClick={() => setActiveTab('access')}
+              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+                activeTab === 'access'
+                  ? 'border-brand-500 text-brand-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              Controle de Acesso
+            </button>
+
+            <button
+              onClick={() => setActiveTab('traffic')}
+              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+                activeTab === 'traffic'
                   ? 'border-brand-500 text-brand-400'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               <Activity className="w-4 h-4" />
-              Vazão & Rede
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 flex-shrink-0 ${
-                activeTab === 'history'
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              Histórico ({device.ipHistory.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('qos')}
-              className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-2 flex-shrink-0 ${
-                activeTab === 'qos'
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Gauge className="w-4 h-4" />
-              Controle de Banda
+              Vazão & Histórico
             </button>
           </div>
 
           {/* Tab Content Body */}
           <div className="p-6 overflow-y-auto space-y-6">
 
-            {/* TAB: IDENTIFY (CORE FEATURE) */}
+            {/* TAB 1: IDENTIFICATION */}
             {activeTab === 'identify' && (
               <div className="space-y-5 animate-fade-in">
-                
-                {/* 1. Manufacturer & Hardware Profile Card */}
+                {/* Manufacturer & Hardware Profile Card */}
                 <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                     <div className="flex items-center gap-2.5">
@@ -366,7 +497,39 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2. Live Ping Diagnostic & Presence Tool */}
+                {/* Step-by-step physical identification guide */}
+                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-cyan-400" />
+                    <h3 className="text-sm font-bold text-white">{identGuide.title}</h3>
+                  </div>
+
+                  <div className="space-y-2 text-xs text-slate-300">
+                    {identGuide.steps.map((st, idx) => (
+                      <div key={idx} className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <p className="leading-relaxed">{st}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {identGuide.tip && (
+                    <div className="p-3 rounded-xl bg-brand-950/20 border border-brand-500/30 text-xs text-brand-300 flex items-start gap-2">
+                      <Info className="w-4 h-4 flex-shrink-0 text-brand-400 mt-0.5" />
+                      <span className="leading-relaxed">{identGuide.tip}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: SUPER TOOLS & DIAGNOSTICS */}
+            {activeTab === 'tools' && (
+              <div className="space-y-5 animate-fade-in">
+                
+                {/* 1. Live Ping Diagnostic */}
                 <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
@@ -382,7 +545,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                     <button
                       onClick={() => handleRunPing(device.ip)}
                       disabled={pingRunning}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-glow-sm disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-glow-sm disabled:opacity-50"
                     >
                       <Zap className={`w-3.5 h-3.5 ${pingRunning ? 'animate-spin' : ''}`} />
                       <span>{pingRunning ? 'Testando...' : 'Testar Ping Agora'}</span>
@@ -434,39 +597,315 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                   )}
                 </div>
 
-                {/* 3. Step-by-step physical identification guide */}
-                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-cyan-400" />
-                    <h3 className="text-sm font-bold text-white">{identGuide.title}</h3>
-                  </div>
-
-                  <div className="space-y-2 text-xs text-slate-300">
-                    {identGuide.steps.map((st, idx) => (
-                      <div key={idx} className="flex items-start gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">
-                          {idx + 1}
-                        </span>
-                        <p className="leading-relaxed">{st}</p>
+                {/* 2. Open Port Scanner */}
+                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+                        <Terminal className="w-5 h-5" />
                       </div>
-                    ))}
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Scanner de Portas Abertas (LAN Port Scanner)</h3>
+                        <p className="text-[11px] text-slate-400">Varredura de portas comuns (HTTP, SSH, SMB, RDP, DNS, Cast)</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleRunPortScan}
+                      disabled={portScanRunning}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition disabled:opacity-50"
+                    >
+                      <Search className={`w-3.5 h-3.5 ${portScanRunning ? 'animate-spin' : ''}`} />
+                      <span>{portScanRunning ? 'Escaneando...' : 'Escanear Portas'}</span>
+                    </button>
                   </div>
 
-                  {identGuide.tip && (
-                    <div className="p-3 rounded-xl bg-brand-950/20 border border-brand-500/30 text-xs text-brand-300 flex items-start gap-2">
-                      <Info className="w-4 h-4 flex-shrink-0 text-brand-400 mt-0.5" />
-                      <span className="leading-relaxed">{identGuide.tip}</span>
+                  {portScanResults && (
+                    <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">
+                          Varredura em {device.ip} ({portScanResults.portsScanned} portas verificadas):
+                        </span>
+                        <span className="font-mono font-bold text-cyan-400">
+                          {portScanResults.openPorts.length} porta(s) aberta(s)
+                        </span>
+                      </div>
+
+                      {portScanResults.openPorts.length === 0 ? (
+                        <p className="text-xs text-slate-500 py-2">
+                          Nenhuma porta pública padrão aberta no momento. O dispositivo está com firewall ativo ou operando silenciosamente.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          {portScanResults.openPorts.map((p) => (
+                            <div key={p} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                                <span className="font-mono font-bold text-white">Porta {p}</span>
+                              </div>
+                              <span className="text-[11px] text-slate-400">
+                                {COMMON_PORT_DESCRIPTIONS[p] || 'Serviço Ativo'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
+                </div>
+
+                {/* 3. Action Buttons: Kick & Wake-on-LAN */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  
+                  {/* Kick Wi-Fi */}
+                  <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-xs font-bold text-white">Expulsar do Wi-Fi (Kick)</h4>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Envia quadros de desautenticação pelo roteador para derrubar o aparelho da rede Wi-Fi e forçá-lo a restabelecer a conexão.
+                    </p>
+                    <button
+                      onClick={handleKickDevice}
+                      disabled={!capabilities.deviceKick}
+                      className="w-full px-3 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600 border border-amber-500/30 text-amber-200 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>{capabilities.deviceKick ? 'Expulsar Aparelho do Wi-Fi' : 'Requer Login Admin'}</span>
+                    </button>
+                  </div>
+
+                  {/* Wake-on-LAN */}
+                  <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <Power className="w-4 h-4 text-emerald-400" />
+                      <h4 className="text-xs font-bold text-white">Ligar Computador (Wake-on-LAN)</h4>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Dispara um pacote mágico via broadcast UDP para ligar a placa de rede de PCs desktop ou servidores desligados.
+                    </p>
+                    <button
+                      onClick={handleSendWakeOnLan}
+                      disabled={!capabilities.wakeOnLan}
+                      className="w-full px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-200 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+                    >
+                      <Power className="w-3.5 h-3.5" />
+                      <span>{capabilities.wakeOnLan ? 'Enviar Pacote WoL' : 'Requer Login Admin'}</span>
+                    </button>
+                  </div>
+
                 </div>
 
               </div>
             )}
 
-            {/* TAB: OVERVIEW */}
-            {activeTab === 'overview' && (
-              <>
-                {/* Real-time traffic stats grid */}
+            {/* TAB 3: NETWORK CONFIG & OWNER */}
+            {activeTab === 'config' && (
+              <div className="space-y-5 animate-fade-in">
+                
+                {/* Static IP DHCP Reservation Card */}
+                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+                        <Server className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Reserva de IP Estático (DHCP Bind)</h3>
+                        <p className="text-[11px] text-slate-400">Fixar permanentemente o endereço {device.ip} para este dispositivo</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleToggleStaticIp}
+                      disabled={!capabilities.staticIpReservation}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                        device.isStaticIp
+                          ? 'bg-cyan-500 text-slate-950 font-bold shadow-cyan-500/30 shadow-md'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                      }`}
+                    >
+                      {device.isStaticIp ? <Check className="w-3.5 h-3.5" /> : null}
+                      <span>{device.isStaticIp ? 'IP Estático Ativo' : 'Ativar IP Estático'}</span>
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
+                    Com a reserva ativada, o roteador ZTE vinculará o endereço MAC <span className="font-mono text-slate-200">{device.mac}</span> ao IP <span className="font-mono text-cyan-400 font-bold">{device.ip}</span>. O dispositivo nunca mais mudará de IP.
+                  </p>
+                </div>
+
+                {/* QoS Traffic Priority Card */}
+                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
+                      <Radio className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Prioridade de Tráfego QoS</h3>
+                      <p className="text-[11px] text-slate-400">Defina o nível de prioridade de largura de banda na rede</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 pt-1">
+                    <button
+                      onClick={() => handleSetPriority('high')}
+                      className={`p-3 rounded-2xl border text-left transition ${
+                        device.priority === 'high'
+                          ? 'bg-purple-950/40 border-purple-500 text-white shadow-glow-sm'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="block font-bold text-xs text-purple-300">Alta Prioridade</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Gamer / Streaming 4K</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSetPriority('normal')}
+                      className={`p-3 rounded-2xl border text-left transition ${
+                        device.priority === 'normal' || !device.priority
+                          ? 'bg-brand-950/40 border-brand-500 text-white shadow-glow-sm'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="block font-bold text-xs text-brand-300">Normal (Padrão)</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Navegação e uso geral</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSetPriority('low')}
+                      className={`p-3 rounded-2xl border text-left transition ${
+                        device.priority === 'low'
+                          ? 'bg-amber-950/40 border-amber-500 text-white shadow-glow-sm'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="block font-bold text-xs text-amber-300">Baixa Prioridade</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Dispositivos secundários</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Owner & Administrator Private Notes */}
+                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-brand-400" />
+                    <h3 className="text-sm font-bold text-white">Proprietário & Anotações do Administrador</h3>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="text-slate-400 block mb-1 font-medium">Nome do Dono / Setor</label>
+                      <input
+                        type="text"
+                        value={ownerInput}
+                        onChange={(e) => setOwnerInput(e.target.value)}
+                        placeholder="Ex: Pedro, Mariana, Quarto Casal, Visitante..."
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-slate-400 block mb-1 font-medium">Anotações Privadas</label>
+                      <textarea
+                        rows={3}
+                        value={notesInput}
+                        onChange={(e) => setNotesInput(e.target.value)}
+                        placeholder="Ex: Notebook corporativo, liberado para acesso até domingo..."
+                        className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500 resize-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      {notesSaved && (
+                        <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium animate-fade-in">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Anotações salvas com sucesso!
+                        </span>
+                      )}
+                      <div className="ml-auto">
+                        <button
+                          onClick={handleSaveNotes}
+                          className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl transition shadow-sm"
+                        >
+                          Salvar Anotações
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 4: ACCESS CONTROL */}
+            {activeTab === 'access' && (
+              <div className="space-y-5 animate-fade-in">
+                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Controle de Conexão Imediato</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Interrompa ou restabeleça o tráfego de dados deste aparelho instantaneamente
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={handleToggleBlock}
+                      className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition shadow-md ${
+                        device.status === 'blocked'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
+                          : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
+                      }`}
+                    >
+                      {device.status === 'blocked' ? (
+                        <>
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Desbloquear Acesso à Internet</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldAlert className="w-4 h-4" />
+                          <span>Bloquear Acesso à Internet</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleTogglePause}
+                      className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition ${
+                        device.status === 'paused'
+                          ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                      }`}
+                    >
+                      {device.status === 'paused' ? (
+                        <>
+                          <Play className="w-4 h-4" />
+                          <span>Retomar Conexão Pausada</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="w-4 h-4" />
+                          <span>Pausar Conexão Temporariamente</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 leading-relaxed">
+                    <strong className="text-slate-300 block mb-0.5">Como funciona o bloqueio:</strong>
+                    O endereço MAC <span className="font-mono text-slate-200">{device.mac}</span> é inserido na lista negra de controle de acesso (Access Control List) do roteador ZTE. O aparelho não conseguirá trocar pacotes com a internet até ser liberado.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: TRAFFIC & HISTORY */}
+            {activeTab === 'traffic' && (
+              <div className="space-y-5 animate-fade-in">
+                {/* Traffic Stats Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800">
                     <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -509,208 +948,45 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Technical Specifications */}
-                <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/80 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Informações Técnicas de Rede
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-                      <span className="text-slate-400">Endereço IP:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium text-white">{device.ip}</span>
-                        <button
-                          onClick={() => copyToClipboard(device.ip, 'ip')}
-                          className="text-slate-400 hover:text-white transition"
-                          title="Copiar IP"
-                        >
-                          {copiedField === 'ip' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-                      <span className="text-slate-400">Endereço MAC:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium text-white">{device.mac}</span>
-                        <button
-                          onClick={() => copyToClipboard(device.mac, 'mac')}
-                          className="text-slate-400 hover:text-white transition"
-                          title="Copiar MAC"
-                        >
-                          {copiedField === 'mac' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-                      <span className="text-slate-400">Gateway Padrão:</span>
-                      <span className="font-mono text-slate-200">192.168.1.1 (ZTE)</span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-                      <span className="text-slate-400">Máscara de Sub-rede:</span>
-                      <span className="font-mono text-slate-200">255.255.255.0</span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-                      <span className="text-slate-400">Primeira vez visto:</span>
-                      <span className="text-slate-300">
-                        {new Date(device.firstSeen).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-                      <span className="text-slate-400">Última atividade:</span>
-                      <span className="text-slate-300">
-                        {new Date(device.lastSeen).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                {/* History Lists */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                      Histórico de IPs (DHCP)
+                    </h4>
+                    <div className="space-y-2">
+                      {device.ipHistory.map((h, i) => (
+                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
+                          <span className="font-mono text-brand-400 font-semibold">{h.ip}</span>
+                          <span className="text-slate-400">
+                            {new Date(h.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
 
-                {/* Quick Access Control Section */}
-                <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/80 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Controle de Acesso Rápido
-                  </h4>
-
-                  {!capabilities.blocking && (
-                    <CapabilityNotice
-                      featureName="Bloqueio de Dispositivos"
-                      reason="O roteador ou adaptador atual não oferece suporte a bloqueio por endereço MAC."
-                    />
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={handleToggleBlock}
-                      disabled={!capabilities.blocking}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition shadow-md ${
-                        !capabilities.blocking
-                          ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500'
-                          : device.status === 'blocked'
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
-                          : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
-                      }`}
-                    >
-                      {device.status === 'blocked' ? (
-                        <>
-                          <ShieldCheck className="w-4 h-4" />
-                          Desbloquear Acesso
-                        </>
-                      ) : (
-                        <>
-                          <ShieldAlert className="w-4 h-4" />
-                          Bloquear Acesso
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={handleTogglePause}
-                      disabled={!capabilities.pauseResume}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition ${
-                        !capabilities.pauseResume
-                          ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500'
-                          : device.status === 'paused'
-                          ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
-                      }`}
-                    >
-                      {device.status === 'paused' ? (
-                        <>
-                          <Play className="w-4 h-4" />
-                          Retomar Conexão
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="w-4 h-4" />
-                          Pausar Temporariamente
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* TAB: HISTORY */}
-            {activeTab === 'history' && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                    Histórico de IPs Atribuídos (DHCP)
-                  </h4>
-                  <div className="space-y-2">
-                    {device.ipHistory.map((h, i) => (
-                      <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
-                        <span className="font-mono text-brand-400 font-semibold">{h.ip}</span>
-                        <span className="text-slate-400">
-                          {new Date(h.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                    Histórico de Sessões de Conexão
-                  </h4>
-                  <div className="space-y-2">
-                    {device.connectionHistory.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
-                        <span className={`font-semibold ${c.type === 'connect' ? 'text-emerald-400' : 'text-slate-400'}`}>
-                          {c.type === 'connect' ? '• Conexão estabelecida' : '• Desconectado da rede'}
-                        </span>
-                        <span className="text-slate-400">
-                          {new Date(c.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                      Sessões de Conexão
+                    </h4>
+                    <div className="space-y-2">
+                      {device.connectionHistory.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
+                          <span className={`font-semibold ${c.type === 'connect' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                            {c.type === 'connect' ? '• Conectado' : '• Desconectado'}
+                          </span>
+                          <span className="text-slate-400">
+                            {new Date(c.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* TAB: QOS */}
-            {activeTab === 'qos' && (
-              <div className="space-y-4">
-                {!capabilities.speedLimit ? (
-                  <CapabilityNotice
-                    featureName="Controle de Banda / QoS"
-                    reason="O roteador ZTE ZXHN H199A opera com controle QoS por filas no firmware do gateway."
-                  />
-                ) : (
-                  <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">Configurar Limite de Download (Kbps)</h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Limite a taxa máxima que este dispositivo pode consumir na rede. Deixe em branco para ilimitado.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        placeholder="Ex: 5000 (para 5 Mbps)"
-                        value={speedLimitValue}
-                        onChange={(e) => setSpeedLimitValue(e.target.value)}
-                        className="px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-brand-500 w-64"
-                      />
-                      <button
-                        onClick={handleSaveSpeedLimit}
-                        className="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl transition"
-                      >
-                        Aplicar Limite
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Footer */}
@@ -730,7 +1006,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
       <ConfirmModal
         isOpen={showConfirmBlock}
         title="Bloquear Dispositivo na Rede?"
-        description={`Você está prestes a cortar o acesso do aparelho "${device.customName || device.originalHostname}" (MAC: ${device.mac}, IP: ${device.ip}). O dispositivo não conseguirá navegar na internet até ser desbloqueado.`}
+        description={`Você está prestes a bloquear o acesso de "${device.customName || device.originalHostname}" (MAC: ${device.mac}, IP: ${device.ip}). O aparelho não conseguirá navegar na internet até ser desbloqueado.`}
         confirmLabel="Sim, Bloquear Dispositivo"
         cancelLabel="Cancelar"
         variant="danger"

@@ -29,6 +29,12 @@ export interface Device {
   totalDownloadBytes: number;
   totalUploadBytes: number;
   speedLimitKbps: number | null;
+  priority?: 'high' | 'normal' | 'low'; // Prioridade QoS
+  isStaticIp?: boolean; // Reserva de IP DHCP Estático
+  ownerName?: string; // Nome do dono (ex: João, Pedro)
+  notes?: string; // Anotações do administrador
+  lastPingMs?: number | null; // Última latência medida em ms
+  kickCount?: number; // Vezes que foi desconectado
   ipHistory: { ip: string; timestamp: string }[];
   connectionHistory: { type: 'connect' | 'disconnect'; timestamp: string }[];
 }
@@ -42,6 +48,11 @@ export interface RouterCapabilities {
   scheduling: boolean;
   reboot: boolean;
   guestNetwork: boolean;
+  deviceKick: boolean; // Expulsar do Wi-Fi
+  staticIpReservation: boolean; // Fixação de IP
+  wakeOnLan: boolean; // Magic Packet WoL
+  portScanner: boolean; // Scanner de portas abertas
+  trafficPriority: boolean; // QoS prioritário
 }
 
 export type RouterProtocol = 'api' | 'snmp' | 'ssh';
@@ -65,6 +76,10 @@ export interface RouterInfo {
   gatewayIp: string;
   subnetMask: string;
   dnsServers: string[];
+  isAdminAuthenticated: boolean;
+  adminUser?: string;
+  sessionToken?: string;
+  connectedAt?: string;
 }
 
 export type EventSeverity = 'info' | 'success' | 'warning' | 'error';

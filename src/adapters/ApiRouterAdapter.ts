@@ -59,7 +59,8 @@ export class ApiRouterAdapter implements RouterAdapter {
       temperatureCelsius: 44,
       gatewayIp: this.config.baseUrl,
       subnetMask: '255.255.255.0',
-      dnsServers: ['1.1.1.1', '8.8.8.8']
+      dnsServers: ['1.1.1.1', '8.8.8.8'],
+      isAdminAuthenticated: false
     };
   }
 
@@ -108,7 +109,12 @@ export class ApiRouterAdapter implements RouterAdapter {
       speedLimit: true,
       scheduling: true,
       reboot: true,
-      guestNetwork: true
+      guestNetwork: true,
+      deviceKick: true,
+      staticIpReservation: true,
+      wakeOnLan: true,
+      portScanner: true,
+      trafficPriority: true
     };
   }
 
@@ -121,5 +127,39 @@ export class ApiRouterAdapter implements RouterAdapter {
     return () => {
       this.eventSubscribers = this.eventSubscribers.filter(cb => cb !== callback);
     };
+  }
+
+  async loginAdmin(_password: string): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async logoutAdmin(): Promise<void> {}
+
+  async rebootRouter(): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async kickDevice(_deviceId: string): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async setStaticIp(_deviceId: string, _isStatic: boolean): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async setTrafficPriority(_deviceId: string, _priority: 'high' | 'normal' | 'low'): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async setDeviceNotes(_deviceId: string, _notes: string): Promise<boolean> {
+    return true;
+  }
+
+  async sendWakeOnLan(_deviceId: string): Promise<{ success: boolean; message?: string }> {
+    return { success: true };
+  }
+
+  async scanDevicePorts(_deviceId: string): Promise<{ openPorts: number[]; portsScanned: number }> {
+    return { openPorts: [80], portsScanned: 15 };
   }
 }

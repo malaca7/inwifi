@@ -71,18 +71,42 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: Live Real Hardware Status Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm animate-fade-in">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="text-xs font-bold text-emerald-300 tracking-wide font-sans">
-            {routerInfo?.name || 'ZTE ZXHN H199A'}
-          </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold hidden md:inline">
-            LIVE LAN
-          </span>
+        {/* Center: Live Real Hardware Status Badge & Admin Indicator */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onNavigateToRouters}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-500/60 shadow-sm transition animate-fade-in group cursor-pointer"
+            title="Clique para gerenciar o Roteador Gateway"
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-xs font-bold text-emerald-300 tracking-wide font-sans group-hover:text-emerald-200">
+              {routerInfo?.name || 'ZTE ZXHN H199A'}
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold hidden md:inline">
+              {routerInfo?.ipAddress || '192.168.1.1'}
+            </span>
+          </button>
+
+          {/* Admin Status Pill */}
+          <button
+            onClick={onNavigateToRouters}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+              routerInfo?.isAdminAuthenticated
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 shadow-glow-sm'
+                : 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25 animate-pulse'
+            }`}
+            title={routerInfo?.isAdminAuthenticated ? 'Sessão Admin Ativa: Todas as ferramentas desbloqueadas' : 'Clique para conectar como Administrador com senha'}
+          >
+            <span className="text-xs">
+              {routerInfo?.isAdminAuthenticated ? '🔒' : '🔑'}
+            </span>
+            <span>
+              {routerInfo?.isAdminAuthenticated ? 'Admin Desbloqueado' : 'Conectar Senha Admin'}
+            </span>
+          </button>
         </div>
 
         {/* Right: Telemetry, Notifications & Profile */}
@@ -102,24 +126,9 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-slate-600">|</span>
             <div className="flex items-center gap-1 text-slate-300">
               <Radio className="w-3 h-3 text-brand-400" />
-              <span>Ping 8ms</span>
+              <span>Ping LAN</span>
             </div>
           </div>
-
-          {/* Router Quick Switcher Chip */}
-          <button
-            onClick={onNavigateToRouters}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 transition"
-            title="Gerenciar Roteadores e Adaptadores"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span className="truncate max-w-[130px] font-sans">
-              {routerInfo?.name || 'Roteador Principal'}
-            </span>
-            <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-slate-800 text-slate-400 uppercase">
-              {routerInfo?.protocol || 'api'}
-            </span>
-          </button>
 
           {/* Notification Bell with Dropdown */}
           <div className="relative">
