@@ -60,6 +60,7 @@ export interface WifiSettings {
   ssid24: string;
   ssid5: string;
   isUnifiedSsid: boolean;
+  bandSteeringEnabled?: boolean; // WLAN Band Steering (Smart Connect)
   password: string;
   securityMode: 'WPA2-PSK' | 'WPA3-SAE' | 'WPA2/WPA3-Mixed';
   hideSsid: boolean;
@@ -118,6 +119,9 @@ export type EventType =
   | 'router_online' 
   | 'ip_changed' 
   | 'high_traffic' 
+  | 'band_steering_changed'
+  | 'gateway_connected'
+  | 'gateway_disconnected' 
   | 'schedule_applied'
   | 'device_renamed';
 

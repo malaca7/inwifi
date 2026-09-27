@@ -32,6 +32,7 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedGuestWifi, setCopiedGuestWifi] = useState(false);
+  const [togglingBandSteering, setTogglingBandSteering] = useState(false);
 
   useEffect(() => {
     if (initialSubTab && (initialSubTab === 'guest' || initialSubTab === 'radio' || initialSubTab === 'admin' || initialSubTab === 'main')) {
@@ -54,6 +55,46 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({
   const handleShareWhatsapp = () => {
     const text = encodeURIComponent(`Olá! Seguem os dados para conectar ao Wi-Fi de visitas:\n📶 Rede: ${settings.guestSsid}\n🔑 Senha: ${settings.guestPassword}`);
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
+
+  // Alterar WLAN Band Steering / Smart Connect diretamente no hardware do roteador ZTE ZXHN H199A
+  const handleToggleBandSteering = async (enable: boolean) => {
+    if (!isAdmin) {
+      onOpenAdminLogin();
+      return;
+    }
+
+    setTogglingBandSteering(true);
+    setFeedback(null);
+    try {
+      const res = await networkService.toggleBandSteering(enable);
+      if (res.success) {
+        setSettings(prev => ({
+          ...prev,
+          isUnifiedSsid: enable,
+          bandSteeringEnabled: enable,
+          ssid5: enable ? prev.ssid24 : prev.ssid5
+        }));
+        setFeedback({
+          success: true,
+          message: res.message || (enable
+            ? 'Modo Smart Connect / WLAN Band Steering LIGADO no roteador ZTE ZXHN H199A! As redes 2.4 GHz e 5 GHz foram unificadas no mesmo nome.'
+            : 'Modo Smart Connect / WLAN Band Steering DESLIGADO no roteador ZTE ZXHN H199A. As frequências 2.4 GHz e 5 GHz agora operam de forma independente.')
+        });
+      } else {
+        setFeedback({
+          success: false,
+          message: res.error || 'Falha ao alterar Band Steering no roteador.'
+        });
+      }
+    } catch (err: any) {
+      setFeedback({
+        success: false,
+        message: err.message || 'Erro de comunicação ao sincronizar Band Steering com o roteador.'
+      });
+    } finally {
+      setTogglingBandSteering(false);
+    }
   };
 
   // Form State for Wi-Fi - Sincronizado com os dados reais do Roteador ZTE ZXHN H199A
@@ -386,34 +427,90 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({
       {activeTab === 'main' && (
         <form onSubmit={handleSaveWifi} className="space-y-6 animate-fade-in">
           
-          {/* Smart Connect Toggle */}
-          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <span className="text-xs font-bold text-white block">
-                Modo Smart Connect (Rede Única Inteligente)
-              </span>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Unifica as frequências 2.4 GHz e 5 GHz no mesmo nome. O roteador direciona automaticamente cada dispositivo para a melhor frequência.
+          {/* Smart Connect / WLAN Band Steering Toggle - Sincronizado 1:1 com o Hardware do Roteador ZTE ZXHN H199A */}
+          <div className="p-5 rounded-2xl bg-neutral-950/90 border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="space-y-1.5 max-w-xl">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-white block">
+                  Modo Smart Connect (Rede Única Inteligente) / WLAN Band Steering
+                </span>
+                {settings.isUnifiedSsid ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Ligado no Roteador (Band Steering Enable: Ligado)
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-900 text-neutral-400 border border-neutral-800 flex items-center gap-1">
+                    Desligado no Roteador (Band Steering Enable: Desligado)
+                  </span>
+                )}
+              </div>
+              
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                Opção correspondente à aba <span className="text-neutral-200 font-semibold">Rede local &rarr; WLAN &rarr; WLAN Band Steering</span> do seu roteador ZTE ZXHN H199A. 
+                Quando ligado (<span className="text-emerald-400 font-mono font-semibold">Band Steering Enable: Ligado</span>), unifica as frequências 2.4 GHz e 5 GHz sob o mesmo nome e o roteador direciona automaticamente cada dispositivo para a frequência ideal.
               </p>
+
+              {/* Exact ZTE radio buttons representation */}
+              <div className="flex items-center gap-4 pt-1 text-xs">
+                <label 
+                  onClick={() => !togglingBandSteering && handleToggleBandSteering(true)}
+                  className={`inline-flex items-center gap-1.5 cursor-pointer font-medium transition ${
+                    settings.isUnifiedSsid ? 'text-emerald-400 font-bold' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="bandSteeringRadio"
+                    checked={settings.isUnifiedSsid}
+                    onChange={() => handleToggleBandSteering(true)}
+                    disabled={togglingBandSteering}
+                    className="accent-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <span>Ligado</span>
+                </label>
+
+                <label 
+                  onClick={() => !togglingBandSteering && handleToggleBandSteering(false)}
+                  className={`inline-flex items-center gap-1.5 cursor-pointer font-medium transition ${
+                    !settings.isUnifiedSsid ? 'text-cyan-400 font-bold' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="bandSteeringRadio"
+                    checked={!settings.isUnifiedSsid}
+                    onChange={() => handleToggleBandSteering(false)}
+                    disabled={togglingBandSteering}
+                    className="accent-cyan-500 w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <span>Desligado</span>
+                </label>
+              </div>
             </div>
 
-            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-              <input
-                type="checkbox"
-                disabled={!isAdmin}
-                checked={settings.isUnifiedSsid}
-                onChange={(e) => {
-                  const unified = e.target.checked;
-                  setSettings(prev => ({
-                    ...prev,
-                    isUnifiedSsid: unified,
-                    ssid5: unified ? prev.ssid24 : prev.ssid5
-                  }));
-                }}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
-            </label>
+            <div className="flex items-center gap-3 self-end sm:self-center flex-shrink-0">
+              {togglingBandSteering && (
+                <span className="text-[11px] text-cyan-400 flex items-center gap-1 font-semibold animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Gravando no hardware...
+                </span>
+              )}
+
+              <label 
+                className="relative inline-flex items-center cursor-pointer flex-shrink-0"
+                title={isAdmin ? "Clique para alternar Band Steering no roteador" : "Autentique com a senha admin para alterar"}
+              >
+                <input
+                  type="checkbox"
+                  disabled={togglingBandSteering}
+                  checked={settings.isUnifiedSsid}
+                  onChange={(e) => handleToggleBandSteering(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-12 h-6.5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
           </div>
 
           {/* SSIDs Grid */}

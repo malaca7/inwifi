@@ -1,4 +1,4 @@
-import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
+import { Device, DeviceBand, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
 
 export interface RouterAdapter {
   readonly id: string;
@@ -72,6 +72,9 @@ export interface RouterAdapter {
   /** Salvar anotações do administrador e proprietário do dispositivo */
   setDeviceNotes(deviceId: string, notes: string, ownerName?: string): Promise<boolean>;
 
+  /** Definir tipo de conexão da banda (Wi-Fi 2.4GHz, 5GHz ou Cabo LAN) */
+  setDeviceBand?(deviceId: string, band: DeviceBand): Promise<boolean>;
+
   /** Enviar pacote mágico Wake-on-LAN para ligar o computador */
   sendWakeOnLan(deviceId: string): Promise<{ success: boolean; message?: string; error?: string }>;
 
@@ -83,6 +86,9 @@ export interface RouterAdapter {
 
   /** Atualizar nome do Wi-Fi (SSID), senha e parâmetros de rádio */
   updateWifiSettings(settings: Partial<WifiSettings>): Promise<{ success: boolean; message?: string; error?: string }>;
+
+  /** Alternar Modo Smart Connect (Rede Única Inteligente) / WLAN Band Steering */
+  toggleBandSteering?(enabled: boolean): Promise<{ success: boolean; message?: string; error?: string }>;
 
   /** Alterar senha de administrador do roteador */
   changeAdminPassword(newPassword: string, oldPassword?: string): Promise<{ success: boolean; message?: string; error?: string }>;

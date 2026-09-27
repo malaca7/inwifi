@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Search, Edit2, ShieldAlert, 
   ShieldCheck, Pause, Play, Eye, ArrowDownCircle, 
   HardDrive, Smartphone, Laptop, Laptop2, Tv, Cpu, Gamepad2, AlertCircle,
   Zap, Server, Radio, Download, CheckSquare, Square,
-  Check, RefreshCw, Sparkles, Tag, Shield, Wifi
+  Check, RefreshCw, Sparkles, Tag, Shield, Wifi, Lock, Cable
 } from 'lucide-react';
 import { Device, RouterCapabilities } from '../types';
 import { DeviceIcon, DeviceStatusBadge } from '../components/devices/DeviceIcon';
@@ -30,6 +30,10 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>(queryParams?.filtro || 'all');
   const [sortBy, setSortBy] = useState<'speed' | 'consumption' | 'name' | 'lastSeen'>('speed');
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+
+  // Stable device positions (order only refreshes on page refresh, tab switch, filter change, or manual refresh)
+  const [stableOrderIds, setStableOrderIds] = useState<string[]>([]);
+  const [manualRefreshCount, setManualRefreshCount] = useState(0);
 
   // Bulk Selection
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set());
@@ -127,21 +131,49 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  // Sorting
-  const sortedDevices = [...filteredDevices].sort((a, b) => {
-    if (sortBy === 'speed') {
-      return (b.currentDownloadSpeedKbps + b.currentUploadSpeedKbps) - (a.currentDownloadSpeedKbps + a.currentUploadSpeedKbps);
+  // Re-calculate stable order IDs ONLY on mount, sort criteria change, filter change, or explicit manual refresh
+  useEffect(() => {
+    const list = [...filteredDevices].sort((a, b) => {
+      if (sortBy === 'speed') {
+        return (b.currentDownloadSpeedKbps + b.currentUploadSpeedKbps) - (a.currentDownloadSpeedKbps + a.currentUploadSpeedKbps);
+      }
+      if (sortBy === 'consumption') {
+        return (b.totalDownloadBytes + b.totalUploadBytes) - (a.totalDownloadBytes + a.totalUploadBytes);
+      }
+      if (sortBy === 'name') {
+        const nameA = a.customName || a.originalHostname;
+        const nameB = b.customName || b.originalHostname;
+        return nameA.localeCompare(nameB);
+      }
+      return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
+    });
+
+    setStableOrderIds(list.map(d => d.id));
+  }, [sortBy, categoryFilter, statusFilter, manualRefreshCount]);
+
+  // Keep devices in stable, fixed slots during real-time telemetry fluctuations (avoids positions jumping)
+  const sortedDevices = useMemo(() => {
+    if (stableOrderIds.length === 0) return filteredDevices;
+
+    const deviceMap = new Map(filteredDevices.map(d => [d.id, d]));
+    const result: Device[] = [];
+
+    // Place existing devices in their locked positions
+    for (const id of stableOrderIds) {
+      const dev = deviceMap.get(id);
+      if (dev) {
+        result.push(dev);
+        deviceMap.delete(id);
+      }
     }
-    if (sortBy === 'consumption') {
-      return (b.totalDownloadBytes + b.totalUploadBytes) - (a.totalDownloadBytes + a.totalUploadBytes);
+
+    // Any new device detected after page load is appended at the end
+    for (const remaining of deviceMap.values()) {
+      result.push(remaining);
     }
-    if (sortBy === 'name') {
-      const nameA = a.customName || a.originalHostname;
-      const nameB = b.customName || b.originalHostname;
-      return nameA.localeCompare(nameB);
-    }
-    return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
-  });
+
+    return result;
+  }, [filteredDevices, stableOrderIds]);
 
   const formatSpeed = (kbps: number) => {
     if (kbps >= 1000) return `${(kbps / 1000).toFixed(1)} Mbps`;
@@ -527,7 +559,27 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               <option value="name">Ordem Alfabética</option>
               <option value="lastSeen">Visto Recentemente</option>
             </select>
+
+            {/* Manual Reorder Button */}
+            <button
+              type="button"
+              onClick={() => setManualRefreshCount(c => c + 1)}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-2xl text-xs font-semibold text-neutral-300 hover:text-white transition cursor-pointer"
+              title="Posições fixadas para evitar oscilações. Clique para reordenar agora segundo os dados atuais."
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden md:inline">Atualizar Ordem</span>
+            </button>
           </div>
+        </div>
+
+        {/* Status notice showing positions are fixed */}
+        <div className="flex items-center justify-between text-[11px] text-neutral-500 pt-1">
+          <div className="flex items-center gap-1.5">
+            <Lock className="w-3 h-3 text-cyan-500/80" />
+            <span>Posições fixadas (a lista não oscila sozinha; só reordena ao atualizar a página ou mudar de aba).</span>
+          </div>
+          <span className="font-mono text-neutral-400">Total: {sortedDevices.length} aparelhos</span>
         </div>
 
         {/* Category Pills */}
@@ -728,10 +780,25 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
 
                       {/* Band & Signal */}
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-200">
-                          {device.band === 'ethernet' ? 'Cabo LAN' : device.band}
+                        <div className="font-semibold text-slate-200 flex items-center gap-1.5 text-xs">
+                          {device.band === '5GHz' ? (
+                            <>
+                              <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                              <span className="text-blue-300 font-bold">5GHz (SSID5)</span>
+                            </>
+                          ) : device.band === '2.4GHz' ? (
+                            <>
+                              <Wifi className="w-3.5 h-3.5 text-cyan-400" />
+                              <span className="text-cyan-300 font-bold">2.4GHz</span>
+                            </>
+                          ) : (
+                            <>
+                              <Cable className="w-3.5 h-3.5 text-neutral-400" />
+                              <span>Cabo LAN</span>
+                            </>
+                          )}
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
                           {device.band === 'ethernet' ? 'Gigabit 1000M' : `${device.signalStrength} dBm`}
                         </div>
                       </td>
@@ -909,8 +976,9 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
 
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <DeviceStatusBadge status={device.status} />
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-800 text-neutral-300">
-                        {device.band}
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-800 text-neutral-300 flex items-center gap-1">
+                        {device.band === '5GHz' ? <Wifi className="w-2.5 h-2.5 text-blue-400" /> : device.band === '2.4GHz' ? <Wifi className="w-2.5 h-2.5 text-cyan-400" /> : <Cable className="w-2.5 h-2.5 text-neutral-400" />}
+                        <span>{device.band === '5GHz' ? '5GHz (SSID5)' : device.band === '2.4GHz' ? '2.4GHz' : 'Cabo LAN'}</span>
                       </span>
                     </div>
                   </div>

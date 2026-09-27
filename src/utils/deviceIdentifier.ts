@@ -167,7 +167,7 @@ export function getIdentificationGuide(device: Device): IdentificationGuideStep 
         `Pressione as teclas Windows + R, digite "cmd" e execute "ipconfig": o IPv4 será ${device.ip}.`,
         `O nome do computador na rede é "${device.originalHostname}".`
       ],
-      tip: 'Conexão via placa de rede Intel Wi-Fi / Ethernet.'
+      tip: 'Conexão sem fio de alta performance via Wi-Fi 5 GHz (SSID5) no roteador ZTE ZXHN H199A.'
     };
   }
 

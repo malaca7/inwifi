@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Device, RouterCapabilities } from '../../types';
+import { Device, DeviceBand, RouterCapabilities } from '../../types';
 import { DeviceIcon, DeviceStatusBadge } from './DeviceIcon';
 import { 
   X, Check, Edit2, ShieldAlert, ShieldCheck, 
@@ -7,7 +7,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Info, Activity,
   Search, Cpu, HelpCircle,
   Radio, Zap, Terminal, Sparkles,
-  Power, Server, FileText, CheckCircle2
+  Power, Server, FileText, CheckCircle2, Cable
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -190,6 +190,14 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     }
   };
 
+  const handleSetBand = async (b: DeviceBand) => {
+    const success = await networkService.setDeviceBand(device.id, b);
+    if (success) {
+      showSuccessFeedback(`Tipo de conexão atualizado para: ${b === 'ethernet' ? 'Cabo LAN' : `Wi-Fi ${b}`}.`);
+      onUpdated();
+    }
+  };
+
   const handleSaveNotes = async () => {
     await networkService.setDeviceNotes(device.id, notesInput, ownerInput);
     setNotesSaved(true);
@@ -318,6 +326,24 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                   {device.priority === 'high' && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                       GAMER / ALTA PRIORIDADE
+                    </span>
+                  )}
+
+                  {/* Connection Band Badge */}
+                  {device.band === '5GHz' ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                      <Wifi className="w-3 h-3 text-blue-400" />
+                      Wi-Fi 5 GHz (SSID5)
+                    </span>
+                  ) : device.band === '2.4GHz' ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+                      <Wifi className="w-3 h-3 text-cyan-400" />
+                      Wi-Fi 2.4 GHz
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-800 text-neutral-300 border border-neutral-700 flex items-center gap-1">
+                      <Cable className="w-3 h-3 text-cyan-400" />
+                      Cabo LAN Gigabit
                     </span>
                   )}
 
@@ -733,6 +759,66 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                   <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
                     Com a reserva ativada, o roteador ZTE vinculará o endereço MAC <span className="font-mono text-slate-200">{device.mac}</span> ao IP <span className="font-mono text-cyan-400 font-bold">{device.ip}</span>. O dispositivo nunca mais mudará de IP.
                   </p>
+                </div>
+
+                {/* Connection Band Selector Card */}
+                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                      <Wifi className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Tipo de Conexão na Rede (Banda)</h3>
+                      <p className="text-[11px] text-slate-400">Interface de comunicação no roteador ZTE (Wi-Fi 5GHz, Wi-Fi 2.4GHz ou Cabo LAN)</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSetBand('5GHz')}
+                      className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                        device.band === '5GHz'
+                          ? 'bg-blue-950/40 border-blue-500 text-white shadow-glow-sm'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="block font-bold text-xs text-blue-300 flex items-center gap-1">
+                        <Wifi className="w-3.5 h-3.5" /> Wi-Fi 5 GHz
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">SSID5 • Ultra Rápido</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSetBand('2.4GHz')}
+                      className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                        device.band === '2.4GHz'
+                          ? 'bg-cyan-950/40 border-cyan-500 text-white shadow-glow-sm'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="block font-bold text-xs text-cyan-300 flex items-center gap-1">
+                        <Wifi className="w-3.5 h-3.5" /> Wi-Fi 2.4 GHz
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Maior Alcance</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSetBand('ethernet')}
+                      className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                        device.band === 'ethernet'
+                          ? 'bg-slate-800 border-slate-500 text-white shadow-glow-sm'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="block font-bold text-xs text-slate-300 flex items-center gap-1">
+                        <Cable className="w-3.5 h-3.5" /> Cabo LAN
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Ethernet Gigabit</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* QoS Traffic Priority Card */}

@@ -11,6 +11,7 @@ import { AccessControlPage } from './pages/AccessControlPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { RoutersPage } from './pages/RoutersPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { RouterConnectionGate } from './components/router/RouterConnectionGate';
 import { networkService } from './services/networkService';
 import { useAppRouter } from './utils/router';
 
@@ -18,6 +19,21 @@ export const App: React.FC = () => {
   const { currentTab, currentSubTab, queryParams, navigate } = useAppRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [, setTick] = useState(0);
+
+  // Mandatory Router Access Gate: Only allow platform access after connecting a router
+  const [isRouterConnected, setIsRouterConnected] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('inwifi_gateway_connected');
+      return !!saved;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDisconnectRouter = () => {
+    localStorage.removeItem('inwifi_gateway_connected');
+    setIsRouterConnected(false);
+  };
 
   // Subscribe to live reactive updates from NetworkService
   useEffect(() => {
@@ -100,6 +116,15 @@ export const App: React.FC = () => {
     }
   };
 
+  // Render Router Connection Gate if router is not connected yet
+  if (!isRouterConnected) {
+    return (
+      <RouterConnectionGate
+        onConnected={() => setIsRouterConnected(true)}
+      />
+    );
+  }
+
   return (
     <div className="h-screen bg-black text-neutral-100 flex flex-col overflow-hidden selection:bg-cyan-500 selection:text-black">
       
@@ -109,6 +134,7 @@ export const App: React.FC = () => {
         isMobileMenuOpen={isMobileMenuOpen}
         onNavigateToAlerts={() => handleSelectTab('alerts')}
         onNavigateToRouters={() => handleSelectTab('routers')}
+        onDisconnectRouter={handleDisconnectRouter}
       />
 
       <div className="flex-1 flex w-full overflow-hidden">

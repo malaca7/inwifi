@@ -1,4 +1,4 @@
-import { Device, DeviceCategory, DeviceStatus, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
+import { Device, DeviceBand, DeviceCategory, DeviceStatus, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
 import { RouterAdapter } from './RouterAdapter';
 
 const STORAGE_KEY_ALIASES = 'inwifi_device_aliases';
@@ -9,6 +9,7 @@ const STORAGE_KEY_PRIORITIES = 'inwifi_device_priorities';
 const STORAGE_KEY_NOTES = 'inwifi_device_notes';
 const STORAGE_KEY_OWNERS = 'inwifi_device_owners';
 const STORAGE_KEY_WIFI_SETTINGS = 'inwifi_wifi_settings';
+const STORAGE_KEY_BANDS = 'inwifi_device_bands';
 
 const DEFAULT_WIFI_SETTINGS: WifiSettings = {
   ssid24: 'MALAQUIAS',
@@ -184,6 +185,7 @@ export class RealRouterAdapter implements RouterAdapter {
     const savedPriorities = this.loadStorage<Record<string, 'high' | 'normal' | 'low'>>(STORAGE_KEY_PRIORITIES, {});
     const savedNotes = this.loadStorage<Record<string, string>>(STORAGE_KEY_NOTES, {});
     const savedOwners = this.loadStorage<Record<string, string>>(STORAGE_KEY_OWNERS, {});
+    const savedBands = this.loadStorage<Record<string, DeviceBand>>(STORAGE_KEY_BANDS, {});
 
     let rawList: Array<{ ip: string; mac: string; hostname?: string }> = [];
 
@@ -231,11 +233,18 @@ export class RealRouterAdapter implements RouterAdapter {
       const defaultName = isGateway
         ? 'Roteador Gateway ZTE'
         : isHost
-        ? (item.hostname || 'Console In-Wifi (PC Host)')
+        ? (item.hostname || 'DESKTOP-TK3OMIH')
         : item.hostname || vendorInfo.label;
 
       const category = isGateway ? 'network' : isHost ? 'computer' : vendorInfo.category;
-      const band = isGateway || isHost ? 'ethernet' : (item.ip.endsWith('.20') || item.ip.endsWith('.9') || item.ip.endsWith('.4') || item.ip.endsWith('.3') ? '5GHz' : '2.4GHz');
+      
+      // Conexão Wi-Fi / Cabo:
+      // O computador DESKTOP-TK3OMIH (192.168.1.11) está conectado via Wi-Fi 5 GHz (SSID5) no roteador ZTE
+      const defaultBand: DeviceBand = isGateway 
+        ? 'ethernet' 
+        : (item.ip === '192.168.1.11' || item.ip.endsWith('.20') || item.ip.endsWith('.9') || item.ip.endsWith('.4') || item.ip.endsWith('.3') ? '5GHz' : '2.4GHz');
+      
+      const band: DeviceBand = savedBands[deviceId] || defaultBand;
 
       return {
         id: deviceId,
@@ -247,7 +256,7 @@ export class RealRouterAdapter implements RouterAdapter {
         category,
         status: savedStates[deviceId] || 'online',
         band,
-        signalStrength: isGateway ? -30 : isHost ? -35 : -52,
+        signalStrength: isGateway ? -30 : isHost ? -42 : -52,
         firstSeen: nowIso,
         lastSeen: nowIso,
         currentDownloadSpeedKbps: Math.floor(180 + Math.random() * 350),
@@ -641,6 +650,29 @@ export class RealRouterAdapter implements RouterAdapter {
     return true;
   }
 
+  async setDeviceBand(deviceId: string, band: DeviceBand): Promise<boolean> {
+    const dev = this.cachedDevices.find(d => d.id === deviceId);
+    if (!dev) return false;
+
+    dev.band = band;
+    const bands = this.loadStorage<Record<string, DeviceBand>>(STORAGE_KEY_BANDS, {});
+    bands[deviceId] = band;
+    this.saveStorage(STORAGE_KEY_BANDS, bands);
+
+    this.emitEvent({
+      id: `evt_band_${Date.now()}`,
+      type: 'schedule_applied',
+      title: 'Tipo de Conexão Atualizado',
+      description: `${dev.customName || dev.originalHostname} configurado como ${band === 'ethernet' ? 'Cabo LAN' : `Wi-Fi ${band}`}.`,
+      timestamp: new Date().toISOString(),
+      severity: 'info',
+      deviceId,
+      read: false
+    });
+
+    return true;
+  }
+
   async sendWakeOnLan(deviceId: string): Promise<{ success: boolean; message?: string; error?: string }> {
     const dev = this.cachedDevices.find(d => d.id === deviceId);
     if (!dev) return { success: false, error: 'Dispositivo não encontrado.' };
@@ -733,6 +765,48 @@ export class RealRouterAdapter implements RouterAdapter {
     return {
       success: true,
       message: serverMessage || 'Parâmetros de Wi-Fi aplicados com sucesso no roteador.'
+    };
+  }
+
+  async toggleBandSteering(enabled: boolean): Promise<{ success: boolean; message?: string; error?: string }> {
+    const current = await this.getWifiSettings();
+    const updated: WifiSettings = {
+      ...current,
+      isUnifiedSsid: enabled,
+      bandSteeringEnabled: enabled,
+      ssid5: enabled ? current.ssid24 : current.ssid5
+    };
+    this.saveStorage(STORAGE_KEY_WIFI_SETTINGS, updated);
+
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    let serverMessage = '';
+    try {
+      const res = await fetch(`${baseUrl}api/router/band-steering`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        serverMessage = data.message;
+      }
+    } catch {}
+
+    this.emitEvent({
+      id: `evt_bs_${Date.now()}`,
+      type: 'band_steering_changed',
+      title: enabled ? 'WLAN Band Steering Ativado' : 'WLAN Band Steering Desativado',
+      description: enabled
+        ? 'Modo Smart Connect / WLAN Band Steering ativado no roteador ZTE ZXHN H199A. Redes 2.4 GHz e 5 GHz unificadas com direcionamento inteligente.'
+        : 'WLAN Band Steering desativado no roteador ZTE ZXHN H199A. Redes 2.4 GHz e 5 GHz operando separadamente.',
+      timestamp: new Date().toISOString(),
+      severity: 'info',
+      read: false
+    });
+
+    return {
+      success: true,
+      message: serverMessage || (enabled ? 'WLAN Band Steering ativado no roteador ZTE.' : 'WLAN Band Steering desativado no roteador ZTE.')
     };
   }
 

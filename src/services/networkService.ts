@@ -1,5 +1,5 @@
 import { adapterService, RouterAdapter } from '../adapters';
-import { Device, RouterInfo, RouterCapabilities, NetworkEvent, TrafficPoint, NetworkTopologyItem, WifiSettings } from '../types';
+import { Device, DeviceBand, RouterInfo, RouterCapabilities, NetworkEvent, TrafficPoint, NetworkTopologyItem, WifiSettings } from '../types';
 import { notificationService } from './notificationService';
 
 class NetworkService {
@@ -303,6 +303,19 @@ class NetworkService {
     return success;
   }
 
+  /** Definir tipo de conexão/banda do dispositivo (Wi-Fi 5GHz, 2.4GHz ou Cabo LAN) */
+  async setDeviceBand(deviceId: string, band: DeviceBand): Promise<boolean> {
+    const success = await (this.currentAdapter as any).setDeviceBand?.(deviceId, band);
+    if (success) {
+      const dev = this.devices.find(d => d.id === deviceId);
+      if (dev) {
+        dev.band = band;
+        this.notify();
+      }
+    }
+    return !!success;
+  }
+
   /** Enviar pacote mágico Wake-on-LAN para ligar o PC */
   async sendWakeOnLan(deviceId: string): Promise<{ success: boolean; message?: string; error?: string }> {
     return await this.currentAdapter.sendWakeOnLan(deviceId);
@@ -325,6 +338,18 @@ class NetworkService {
       await this.refreshData();
     }
     return res;
+  }
+
+  /** Alternar Modo Smart Connect (Rede Única Inteligente) / WLAN Band Steering no roteador */
+  async toggleBandSteering(enabled: boolean): Promise<{ success: boolean; message?: string; error?: string }> {
+    if (this.currentAdapter.toggleBandSteering) {
+      const res = await this.currentAdapter.toggleBandSteering(enabled);
+      if (res.success) {
+        await this.refreshData();
+      }
+      return res;
+    }
+    return await this.updateWifiSettings({ isUnifiedSsid: enabled, bandSteeringEnabled: enabled });
   }
 
   /** Alterar senha de administrador do roteador */

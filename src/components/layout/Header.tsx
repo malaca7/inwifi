@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Wifi, Bell, 
   ArrowDownCircle, ArrowUpCircle, Menu, X,
-  Radio
+  Radio, LogOut
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { NetworkEvent } from '../../types';
@@ -12,13 +12,15 @@ interface HeaderProps {
   isMobileMenuOpen: boolean;
   onNavigateToAlerts: () => void;
   onNavigateToRouters: () => void;
+  onDisconnectRouter?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onToggleMobileMenu,
   isMobileMenuOpen,
   onNavigateToAlerts,
-  onNavigateToRouters
+  onNavigateToRouters,
+  onDisconnectRouter
 }) => {
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const routerInfo = networkService.getRouterInfo();
@@ -83,6 +85,21 @@ export const Header: React.FC<HeaderProps> = ({
               {routerInfo?.ipAddress || '192.168.1.1'}
             </span>
           </button>
+
+          {onDisconnectRouter && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Deseja desconectar o roteador gateway e retornar à tela de conexão?')) {
+                  onDisconnectRouter();
+                }
+              }}
+              className="p-1.5 rounded-xl border border-neutral-800 hover:border-rose-500/40 bg-neutral-900/60 hover:bg-rose-950/20 text-neutral-400 hover:text-rose-300 transition cursor-pointer"
+              title="Desconectar Roteador Gateway"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Admin Status Pill */}
           <button
