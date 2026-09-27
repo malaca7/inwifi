@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>In-Wifi — Redirecionando...</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      var pathSegmentsToKeep = 1;
+
+      var l = window.location;
+      var repoSegment = l.pathname.split('/')[1] === 'inwifi' ? '/inwifi' : '';
+      var path = l.pathname.slice(repoSegment.length);
+      var newUrl = l.protocol + '//' + l.host + repoSegment + '/#' + path + (l.search ? l.search : '') + l.hash;
+      window.location.replace(newUrl);
+    </script>
+  </head>
+  <body style="background:#000000; color:#ffffff; font-family:sans-serif; text-align:center; padding-top:20vh;">
+    <p>Redirecionando para In-Wifi...</p>
+  </body>
+</html>
