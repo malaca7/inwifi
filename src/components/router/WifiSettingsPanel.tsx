@@ -149,22 +149,6 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({
     return () => { isMounted = false; };
   }, [isAdmin]);
 
-  const handleSyncWithRouter = async () => {
-    setLoading(true);
-    setFeedback(null);
-    try {
-      localStorage.removeItem('inwifi_wifi_settings');
-      const data = await networkService.getWifiSettings();
-      if (data) {
-        setSettings(data);
-        setFeedback({ success: true, message: 'Dados de Wi-Fi e Rádio sincronizados com sucesso diretamente do roteador!' });
-      }
-    } catch {
-      setFeedback({ success: false, message: 'Erro ao sincronizar com roteador.' });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Generate high-entropy safe random password
   const generateStrongPassword = () => {
@@ -315,16 +299,13 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          <button
-            type="button"
-            onClick={handleSyncWithRouter}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold transition cursor-pointer"
-            title="Sincronizar configurações de Wi-Fi diretamente do roteador"
+          <div 
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold font-mono"
+            title="As configurações de Wi-Fi e rádio são sincronizadas automaticamente em tempo real com o roteador"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Sincronizar com Roteador</span>
-          </button>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Auto-Sincronizado</span>
+          </div>
 
           {!isAdmin && (
             <button

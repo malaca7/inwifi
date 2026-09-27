@@ -82,14 +82,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start md:self-auto">
-          <button
-            onClick={() => networkService.refreshData()}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-glow-sm"
-          >
-            <Activity className="w-3.5 h-3.5" />
-            <span>Atualizar Telemetria</span>
-          </button>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold font-mono shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Auto-Sincronização em Tempo Real</span>
+          </div>
         </div>
       </div>
 

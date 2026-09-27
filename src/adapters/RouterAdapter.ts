@@ -92,4 +92,7 @@ export interface RouterAdapter {
 
   /** Alterar senha de administrador do roteador */
   changeAdminPassword(newPassword: string, oldPassword?: string): Promise<{ success: boolean; message?: string; error?: string }>;
+
+  /** Atualizar informações e parâmetros do Gateway / Roteador (IP, DNS, Subnet Mask, etc.) */
+  updateRouterInfo?(info: Partial<RouterInfo>): Promise<{ success: boolean; message?: string; error?: string }>;
 }

@@ -110,6 +110,10 @@ export interface RouterInfo {
   gatewayIp: string;
   subnetMask: string;
   dnsServers: string[];
+  dhcpRangeStart?: string;
+  dhcpRangeEnd?: string;
+  dhcpLeaseHours?: number;
+  mtu?: number;
   isAdminAuthenticated: boolean;
   adminUser?: string;
   sessionToken?: string;

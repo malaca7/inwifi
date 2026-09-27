@@ -10,7 +10,34 @@ const STORAGE_KEY_PRIORITIES = 'inwifi_device_priorities';
 const STORAGE_KEY_NOTES = 'inwifi_device_notes';
 const STORAGE_KEY_OWNERS = 'inwifi_device_owners';
 const STORAGE_KEY_WIFI_SETTINGS = 'inwifi_wifi_settings';
+const STORAGE_KEY_ROUTER_INFO = 'inwifi_router_info';
 const STORAGE_KEY_BANDS = 'inwifi_device_bands';
+
+const DEFAULT_ROUTER_INFO: RouterInfo = {
+  id: 'real-lan-router',
+  name: 'Roteador Principal (ZTE ZXHN H199A)',
+  brand: 'ZTE Corporation',
+  model: 'ZXHN H199A',
+  ipAddress: '192.168.1.1',
+  macAddress: 'C0:94:AD:90:03:23',
+  firmwareVersion: 'V9.1.0P2_MUL (Live)',
+  protocol: 'api',
+  uptimeSeconds: 348200,
+  isOnline: true,
+  lastSync: new Date().toISOString(),
+  cpuUsagePercent: 14,
+  ramUsagePercent: 36,
+  totalRamMb: 512,
+  temperatureCelsius: 41,
+  gatewayIp: '192.168.1.1',
+  subnetMask: '255.255.255.0',
+  dnsServers: ['192.168.1.1', '1.1.1.1'],
+  dhcpRangeStart: '192.168.1.2',
+  dhcpRangeEnd: '192.168.1.254',
+  dhcpLeaseHours: 24,
+  mtu: 1500,
+  isAdminAuthenticated: false
+};
 
 const DEFAULT_WIFI_SETTINGS: WifiSettings = {
   ssid24: 'MALAQUIAS',
@@ -129,6 +156,7 @@ export class RealRouterAdapter implements RouterAdapter {
 
   async getRouterInfo(): Promise<RouterInfo> {
     const adminSession = this.getAdminSession();
+    const local = this.loadStorage<Partial<RouterInfo>>(STORAGE_KEY_ROUTER_INFO, {});
     const baseUrl = import.meta.env.BASE_URL || '/';
     const endpoints = ['/api/router/info', `${baseUrl}api/router/info`];
 
@@ -137,39 +165,77 @@ export class RealRouterAdapter implements RouterAdapter {
         const res = await fetch(ep);
         if (res.ok) {
           const data = await res.json();
-          return {
+          const merged: RouterInfo = {
+            ...DEFAULT_ROUTER_INFO,
+            ...local,
             ...data,
             isOnline: this.connected,
             isAdminAuthenticated: data.isAdminAuthenticated || adminSession.isAuthenticated,
             adminUser: data.adminUser || adminSession.username,
             sessionToken: data.sessionToken || adminSession.token || undefined
           };
+          this.saveStorage(STORAGE_KEY_ROUTER_INFO, merged);
+          return merged;
         }
       } catch {}
     }
 
     return {
+      ...DEFAULT_ROUTER_INFO,
+      ...local,
       id: this.id,
-      name: 'Roteador Principal (ZTE ZXHN H199A)',
-      brand: 'ZTE Corporation',
-      model: 'ZXHN H199A',
-      ipAddress: '192.168.1.1',
-      macAddress: 'C0:94:AD:90:03:23',
-      firmwareVersion: 'V9.1.0P2_MUL (Live)',
-      protocol: 'api',
-      uptimeSeconds: 348200,
       isOnline: this.connected,
       lastSync: new Date().toISOString(),
-      cpuUsagePercent: 14,
-      ramUsagePercent: 36,
-      totalRamMb: 512,
-      temperatureCelsius: 41,
-      gatewayIp: '192.168.1.1',
-      subnetMask: '255.255.255.0',
-      dnsServers: ['192.168.1.1', '1.1.1.1'],
       isAdminAuthenticated: adminSession.isAuthenticated,
       adminUser: adminSession.username,
       sessionToken: adminSession.token || undefined
+    };
+  }
+
+  async updateRouterInfo(info: Partial<RouterInfo>): Promise<{ success: boolean; message?: string; error?: string }> {
+    const current = await this.getRouterInfo();
+    const updated: RouterInfo = {
+      ...current,
+      ...info,
+      gatewayIp: info.ipAddress || info.gatewayIp || current.gatewayIp,
+      ipAddress: info.ipAddress || current.ipAddress
+    };
+    this.saveStorage(STORAGE_KEY_ROUTER_INFO, updated);
+
+    // Update gateway device in cached devices if IP or name was updated
+    const gwDev = this.cachedDevices.find(d => d.id === 'dev_gateway');
+    if (gwDev) {
+      if (info.name) gwDev.customName = info.name;
+      if (info.ipAddress) gwDev.ip = info.ipAddress;
+    }
+
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    let serverMessage = '';
+    try {
+      const res = await fetch(`${baseUrl}api/router/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(info)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        serverMessage = data.message;
+      }
+    } catch {}
+
+    this.emitEvent({
+      id: `evt_router_cfg_${Date.now()}`,
+      type: 'router_online',
+      title: 'Configurações do Gateway Atualizadas',
+      description: `Parâmetros de rede do roteador ${updated.name} (${updated.ipAddress}) foram salvos e aplicados com sucesso.`,
+      timestamp: new Date().toISOString(),
+      severity: 'success',
+      read: false
+    });
+
+    return {
+      success: true,
+      message: serverMessage || 'Configurações do Gateway salvas e aplicadas no roteador!'
     };
   }
 
@@ -189,6 +255,11 @@ export class RealRouterAdapter implements RouterAdapter {
     const savedNotes = this.loadStorage<Record<string, string>>(STORAGE_KEY_NOTES, {});
     const savedOwners = this.loadStorage<Record<string, string>>(STORAGE_KEY_OWNERS, {});
     const savedBands = this.loadStorage<Record<string, DeviceBand>>(STORAGE_KEY_BANDS, {});
+    const savedWifi = this.loadStorage<WifiSettings>(STORAGE_KEY_WIFI_SETTINGS, DEFAULT_WIFI_SETTINGS);
+    const savedRouterInfo = this.loadStorage<Partial<RouterInfo>>(STORAGE_KEY_ROUTER_INFO, {});
+    const currentGwIp = savedRouterInfo.ipAddress || '192.168.1.1';
+    const wifiSsid24 = savedWifi.ssid24 || 'MALAQUIAS';
+    const wifiSsid5 = savedWifi.isUnifiedSsid ? wifiSsid24 : (savedWifi.ssid5 || 'Ta Liso Né?!?');
 
     let rawList: Array<{ ip: string; mac: string; hostname?: string; isOnline?: boolean; status?: DeviceStatus; lastSeen?: string }> = [];
 
@@ -212,7 +283,7 @@ export class RealRouterAdapter implements RouterAdapter {
     const mapped: Device[] = rawList.map((item) => {
       const vendorInfo = this.resolveVendor(item.mac);
       const deviceId = `dev_${item.mac.toLowerCase().replace(/:/g, '_')}`;
-      const isGateway = item.ip === '192.168.1.1';
+      const isGateway = item.ip === currentGwIp || item.ip === '192.168.1.1';
       const isHost = item.ip === '192.168.1.11';
 
       if (!this.knownMacs.has(item.mac) && !isGateway && !isHost && this.knownMacs.size > 0) {
@@ -222,7 +293,7 @@ export class RealRouterAdapter implements RouterAdapter {
       }
 
       const defaultName = isGateway
-        ? 'Roteador Gateway ZTE'
+        ? (savedRouterInfo.name || 'Roteador Gateway ZTE')
         : isHost
         ? (item.hostname || 'DESKTOP-TK3OMIH')
         : item.hostname || vendorInfo.label;
@@ -230,7 +301,6 @@ export class RealRouterAdapter implements RouterAdapter {
       const category = isGateway ? 'network' : isHost ? 'computer' : vendorInfo.category;
       
       // Conexão Wi-Fi / Cabo:
-      // O computador DESKTOP-TK3OMIH (192.168.1.11) está conectado via Wi-Fi 5 GHz (SSID5) no roteador ZTE
       const defaultBand: DeviceBand = isGateway 
         ? 'ethernet' 
         : (item.ip === '192.168.1.11' || item.ip.endsWith('.20') || item.ip.endsWith('.9') || item.ip.endsWith('.4') || item.ip.endsWith('.3') ? '5GHz' : '2.4GHz');
@@ -242,7 +312,7 @@ export class RealRouterAdapter implements RouterAdapter {
       // Status real de conexão sincronizado com o roteador (Online vs Offline)
       const isOnline = item.isOnline !== undefined 
         ? Boolean(item.isOnline) 
-        : (item.ip === '192.168.1.1' || item.ip === '192.168.1.11' || item.ip === '192.168.1.2' || item.ip === '192.168.1.14');
+        : (item.ip === currentGwIp || item.ip === '192.168.1.1' || item.ip === '192.168.1.11' || item.ip === '192.168.1.2' || item.ip === '192.168.1.14');
       
       const computedStatus: DeviceStatus = savedStates[deviceId] 
         ? savedStates[deviceId] 
@@ -279,18 +349,22 @@ export class RealRouterAdapter implements RouterAdapter {
       }
       this.onlineStates.set(deviceId, isActuallyOnline);
 
+      const dynamicSsid = isGateway 
+        ? undefined 
+        : (band === '5GHz' ? wifiSsid5 : band === '2.4GHz' ? wifiSsid24 : undefined);
+
       return {
         id: deviceId,
         mac: item.mac,
         ip: item.ip,
         originalHostname: defaultName,
-        customName: savedAliases[deviceId] || (isGateway ? 'Roteador Principal ZTE' : null),
+        customName: savedAliases[deviceId] || (isGateway ? (savedRouterInfo.name || 'Roteador Principal ZTE') : null),
         manufacturer: profile.brand || vendorInfo.vendor,
         brand: profile.brand,
         model: profile.model,
         os: profile.os,
         wifiStandard: profile.wifiStandard,
-        ssid: profile.ssid,
+        ssid: dynamicSsid || profile.ssid,
         channel: profile.channel,
         linkSpeedMbps: profile.linkSpeedMbps,
         ipv6: profile.ipv6,
@@ -781,6 +855,17 @@ export class RealRouterAdapter implements RouterAdapter {
     const updated: WifiSettings = { ...current, ...settings };
     this.saveStorage(STORAGE_KEY_WIFI_SETTINGS, updated);
 
+    // Apply updated SSIDs dynamically to all wireless devices in cachedDevices
+    const ssid24 = updated.ssid24 || 'MALAQUIAS';
+    const ssid5 = updated.isUnifiedSsid ? ssid24 : (updated.ssid5 || 'Ta Liso Né?!?');
+    for (const d of this.cachedDevices) {
+      if (d.band === '2.4GHz') {
+        d.ssid = ssid24;
+      } else if (d.band === '5GHz') {
+        d.ssid = ssid5;
+      }
+    }
+
     const baseUrl = import.meta.env.BASE_URL || '/';
     let serverMessage = '';
     try {
@@ -820,6 +905,15 @@ export class RealRouterAdapter implements RouterAdapter {
       ssid5: enabled ? current.ssid24 : current.ssid5
     };
     this.saveStorage(STORAGE_KEY_WIFI_SETTINGS, updated);
+
+    // Unify or split SSIDs on all connected devices
+    for (const d of this.cachedDevices) {
+      if (d.band === '2.4GHz') {
+        d.ssid = updated.ssid24;
+      } else if (d.band === '5GHz') {
+        d.ssid = enabled ? updated.ssid24 : updated.ssid5;
+      }
+    }
 
     const baseUrl = import.meta.env.BASE_URL || '/';
     let serverMessage = '';

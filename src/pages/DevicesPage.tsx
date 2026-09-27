@@ -64,8 +64,6 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   const [deviceToBlock, setDeviceToBlock] = useState<Device | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-
   const devices = networkService.getDevices();
   const routerInfo = networkService.getRouterInfo();
   const isAdmin = routerInfo?.isAdminAuthenticated || false;
@@ -73,19 +71,6 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   const showSuccessFeedback = (msg: string) => {
     setActionSuccess(msg);
     setTimeout(() => setActionSuccess(null), 4000);
-  };
-
-  const handleSyncWithRouter = async () => {
-    setIsSyncing(true);
-    try {
-      await networkService.refreshData();
-      setManualRefreshCount(c => c + 1);
-      showSuccessFeedback('Sincronização com o roteador concluída! Dispositivos e status atualizados.');
-    } catch {
-      //
-    } finally {
-      setIsSyncing(false);
-    }
   };
 
   const handleInlinePing = async (dev: Device) => {
@@ -610,17 +595,14 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               <option value="lastSeen">Visto Recentemente</option>
             </select>
 
-            {/* Sync with Router Button */}
-            <button
-              type="button"
-              onClick={handleSyncWithRouter}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3 py-2.5 bg-brand-600/20 hover:bg-brand-600/30 border border-brand-500/40 hover:border-brand-500 text-brand-300 hover:text-white rounded-2xl text-xs font-semibold transition cursor-pointer"
-              title="Consultar roteador físico agora e sincronizar status de conexões online/offline"
+            {/* Auto-Sync Live Status Indicator */}
+            <div 
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-semibold font-mono shadow-sm"
+              title="A plataforma sincroniza todos os aparelhos e o roteador continuamente de forma automática em tempo real"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-brand-400 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar Roteador'}</span>
-            </button>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">Auto-Sincronizado</span>
+            </div>
 
             {/* View Mode Toggle: Cards / Tabela */}
             <div className="flex items-center bg-slate-950 border border-slate-800 p-1 rounded-2xl">

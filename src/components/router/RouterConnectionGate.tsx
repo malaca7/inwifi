@@ -255,7 +255,7 @@ export const RouterConnectionGate: React.FC<RouterConnectionGateProps> = ({ onCo
                 </>
               ) : (
                 <>
-                  <span>Conectar e Sincronizar Roteador</span>
+                  <span>Conectar e Acessar Roteador</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

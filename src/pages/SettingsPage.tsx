@@ -1,33 +1,23 @@
 import React, { useState } from 'react';
 import { 
-  Settings, Radio, Shield, RefreshCw, 
+  Settings, Radio, Shield, 
   Trash2, Lock, Cpu, Server, CheckCircle2, Zap
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
 import { ConfirmModal } from '../components/common/ConfirmModal';
+import { GatewayConfigForm } from '../components/router/GatewayConfigForm';
 
 export const SettingsPage: React.FC = () => {
   const [showPurgeModal, setShowPurgeModal] = useState(false);
-  const [pollingRate, setPollingRate] = useState('4');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [pollingRate, setPollingRate] = useState(() => String(networkService.getPollingInterval()));
 
   const routerInfo = networkService.getRouterInfo();
   const devices = networkService.getDevices();
   const adapter = networkService.getAdapter();
 
-  const handleForceSync = async () => {
-    setIsSyncing(true);
-    setSyncFeedback(null);
-    try {
-      await networkService.refreshData();
-      setSyncFeedback('Dados do roteador (ARP / DHCP / Leases) sincronizados com sucesso diretamente do hardware!');
-      setTimeout(() => setSyncFeedback(null), 4000);
-    } catch {
-      setSyncFeedback('Erro ao atualizar dados do roteador.');
-    } finally {
-      setIsSyncing(false);
-    }
+  const handlePollingChange = (rate: string) => {
+    setPollingRate(rate);
+    networkService.setPollingInterval(Number(rate));
   };
 
   const handlePurgeCache = () => {
@@ -53,22 +43,14 @@ export const SettingsPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleForceSync}
-          disabled={isSyncing}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-glow-sm self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-          <span>{isSyncing ? 'Coletando Dados...' : 'Forçar Sincronização Agora'}</span>
-        </button>
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold self-start sm:self-auto">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Auto-Sincronizado em Tempo Real</span>
+        </div>
       </div>
 
-      {syncFeedback && (
-        <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          <span>{syncFeedback}</span>
-        </div>
-      )}
+      {/* GATEWAY LAN NETWORK CONFIGURATION CARD */}
+      <GatewayConfigForm />
 
       {/* Grid of Core Architecture & Telemetry Settings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -197,7 +179,7 @@ export const SettingsPage: React.FC = () => {
               <label className="text-slate-400 block mb-1">Taxa de Atualização da Telemetria</label>
               <select
                 value={pollingRate}
-                onChange={(e) => setPollingRate(e.target.value)}
+                onChange={(e) => handlePollingChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500"
               >
                 <option value="1">1 segundo (Tempo real intensivo)</option>

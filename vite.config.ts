@@ -35,6 +35,24 @@ let routerAdminSession: {
   token: null
 };
 
+let routerGatewayConfig = {
+  id: 'real-lan-router',
+  name: 'Roteador Principal (ZTE ZXHN H199A)',
+  brand: 'ZTE Corporation',
+  model: 'ZXHN H199A',
+  ipAddress: '192.168.1.1',
+  macAddress: 'C0:94:AD:90:03:23',
+  firmwareVersion: 'V9.1.0P2_MUL (Live)',
+  protocol: 'api' as const,
+  gatewayIp: '192.168.1.1',
+  subnetMask: '255.255.255.0',
+  dnsServers: ['192.168.1.1', '1.1.1.1'],
+  dhcpRangeStart: '192.168.1.2',
+  dhcpRangeEnd: '192.168.1.254',
+  dhcpLeaseHours: 24,
+  mtu: 1500
+};
+
 let routerWifiSettings = {
   ssid24: 'MALAQUIAS',
   ssid5: 'Ta Liso Né?!?',
@@ -94,6 +112,7 @@ try {
     const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
     if (saved.wifi) routerWifiSettings = { ...routerWifiSettings, ...saved.wifi };
     if (saved.admin) routerAdminSession = { ...routerAdminSession, ...saved.admin };
+    if (saved.gateway) routerGatewayConfig = { ...routerGatewayConfig, ...saved.gateway };
   }
 } catch {}
 
@@ -102,6 +121,7 @@ function persistRouterState() {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify({
       wifi: routerWifiSettings,
       admin: routerAdminSession,
+      gateway: routerGatewayConfig,
       updatedAt: new Date().toISOString()
     }, null, 2));
   } catch {}
@@ -109,45 +129,67 @@ function persistRouterState() {
 
 function handleRoutes(middlewares: any) {
   middlewares.use((req: any, res: any, next: any) => {
-    const url = req.url || '';
+    const rawUrl = req.url || '';
+    const pathname = rawUrl.split('?')[0];
+    const url = rawUrl;
 
     // Route: /logo.png -> redirect to base /inwifi/logo.png
-    if (url === '/logo.png') {
+    if (pathname === '/logo.png') {
       res.writeHead(302, { Location: '/inwifi/logo.png' });
       res.end();
       return;
     }
 
-    // Route: /api/router/info or /inwifi/api/router/info
-    if (url.endsWith('/api/router/info')) {
-      const info = {
-        id: 'real-lan-router',
-        name: 'Roteador Principal (ZTE ZXHN H199A)',
-        brand: 'ZTE Corporation',
-        model: 'ZXHN H199A',
-        ipAddress: '192.168.1.1',
-        macAddress: 'C0:94:AD:90:03:23',
-        firmwareVersion: 'V9.1.0P2_MUL (Live)',
-        protocol: 'api',
-        uptimeSeconds: 348200,
-        isOnline: true,
-        lastSync: new Date().toISOString(),
-        cpuUsagePercent: 14,
-        ramUsagePercent: 36,
-        totalRamMb: 512,
-        temperatureCelsius: 41,
-        gatewayIp: '192.168.1.1',
-        subnetMask: '255.255.255.0',
-        dnsServers: ['192.168.1.1', '1.1.1.1'],
-        isAdminAuthenticated: routerAdminSession.isAuthenticated,
-        adminUser: routerAdminSession.username,
-        sessionToken: routerAdminSession.token || undefined,
-        connectedAt: routerAdminSession.loginTime || undefined
-      };
+    // Route: /api/router/info or /api/router/config
+    if (pathname.includes('/api/router/info') || pathname.includes('/api/router/config')) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.end(JSON.stringify(info));
-      return;
+
+      if (req.method === 'GET') {
+        const info = {
+          ...routerGatewayConfig,
+          uptimeSeconds: 348200,
+          isOnline: true,
+          lastSync: new Date().toISOString(),
+          cpuUsagePercent: 14,
+          ramUsagePercent: 36,
+          totalRamMb: 512,
+          temperatureCelsius: 41,
+          isAdminAuthenticated: routerAdminSession.isAuthenticated,
+          adminUser: routerAdminSession.username,
+          sessionToken: routerAdminSession.token || undefined,
+          connectedAt: routerAdminSession.loginTime || undefined
+        };
+        res.end(JSON.stringify(info));
+        return;
+      }
+
+      if (req.method === 'POST' || req.method === 'PUT') {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const parsed = body ? JSON.parse(body) : {};
+            routerGatewayConfig = {
+              ...routerGatewayConfig,
+              ...parsed
+            };
+            if (parsed.ipAddress) {
+              routerGatewayConfig.gatewayIp = parsed.ipAddress;
+            }
+            persistRouterState();
+            res.end(JSON.stringify({
+              success: true,
+              message: 'Configurações do Gateway atualizadas e salvas com sucesso no roteador!',
+              config: routerGatewayConfig
+            }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, error: err.message || 'Erro ao salvar configurações do gateway.' }));
+          }
+        });
+        return;
+      }
     }
 
     // Route: /api/router/login (Autenticação Admin com Senha)
@@ -538,10 +580,11 @@ function handleRoutes(middlewares: any) {
     }
 
     // Route: /api/router/devices or /inwifi/api/router/devices
-    if (url.endsWith('/api/router/devices')) {
+    if (pathname.includes('/api/router/devices')) {
       exec('arp -a', (err, stdout) => {
         const activeIps = new Set<string>();
-        activeIps.add('192.168.1.1'); // Gateway principal sempre ativo
+        const currentGwIp = routerGatewayConfig.ipAddress || '192.168.1.1';
+        activeIps.add(currentGwIp); // Gateway principal sempre ativo
 
         // Add local host interface IP
         const ifaces = os.networkInterfaces();
@@ -582,7 +625,7 @@ function handleRoutes(middlewares: any) {
 
         // Lista completa de dispositivos conhecidos da rede LAN
         const allKnownDevices = [
-          { ip: '192.168.1.1', mac: 'C0:94:AD:90:03:23', hostname: 'ZTE-ZXHN-H199A-Gateway' },
+          { ip: currentGwIp, mac: routerGatewayConfig.macAddress, hostname: routerGatewayConfig.name },
           { ip: '192.168.1.11', mac: '70:32:17:41:2F:4E', hostname: 'DESKTOP-TK3OMIH' },
           { ip: '192.168.1.2', mac: '14:09:B4:A6:F2:D7', hostname: 'Smartphone Motorola' },
           { ip: '192.168.1.14', mac: '32:8A:95:8A:A6:18', hostname: 'Dispositivo Wi-Fi Ativo' },
@@ -594,13 +637,19 @@ function handleRoutes(middlewares: any) {
           { ip: '192.168.1.20', mac: '1C:FE:2B:AE:24:4A', hostname: 'Apple MacBook Pro' }
         ];
 
-        // Sincroniza cada dispositivo com o status real do roteador (Online vs Offline)
+        const wifiSsid24 = routerWifiSettings.ssid24 || 'MALAQUIAS';
+        const wifiSsid5 = routerWifiSettings.isUnifiedSsid ? wifiSsid24 : (routerWifiSettings.ssid5 || 'Ta Liso Né?!?');
+
+        // Sincroniza cada dispositivo com o status real do roteador (Online vs Offline) e SSIDs atuais
         const devices = allKnownDevices.map((dev) => {
           const isOnline = activeIps.has(dev.ip);
+          const is5G = dev.ip === '192.168.1.2' || dev.ip === '192.168.1.6' || dev.ip === '192.168.1.7';
+          const isEthernet = dev.ip === currentGwIp || dev.ip === '192.168.1.11';
           return {
             ...dev,
             isOnline,
             status: isOnline ? 'online' : 'offline',
+            ssid: isEthernet ? undefined : (is5G ? wifiSsid5 : wifiSsid24),
             lastSeen: isOnline ? new Date().toISOString() : new Date(Date.now() - 3600000 * 2).toISOString()
           };
         });
@@ -613,7 +662,7 @@ function handleRoutes(middlewares: any) {
     }
 
     // Route: /api/router/block or /api/router/unblock
-    if (url.includes('/api/router/block') || url.includes('/api/router/unblock')) {
+    if (pathname.includes('/api/router/block') || pathname.includes('/api/router/unblock')) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.end(JSON.stringify({ success: true }));

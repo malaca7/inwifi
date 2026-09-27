@@ -27,10 +27,11 @@ class NetworkService {
   private async init() {
     await this.refreshData();
 
-    // Start background light polling for real-time telemetry
+    // Start background light polling for real-time telemetry with saved frequency
+    const savedRate = Number(localStorage.getItem('inwifi_polling_rate')) || 4;
     this.pollInterval = window.setInterval(() => {
       this.pollLightTelemetry();
-    }, 4000);
+    }, savedRate * 1000);
 
     // Subscribe to adapter events
     this.currentAdapter.subscribeEvents((event) => {
@@ -361,6 +362,23 @@ class NetworkService {
     return res;
   }
 
+  /** Atualizar informações e parâmetros do Gateway / Roteador (IP, DNS, Subnet Mask, etc.) */
+  async updateRouterInfo(info: Partial<RouterInfo>): Promise<{ success: boolean; message?: string; error?: string }> {
+    if (this.currentAdapter.updateRouterInfo) {
+      const res = await this.currentAdapter.updateRouterInfo(info);
+      if (res.success) {
+        await this.refreshData();
+      }
+      return res;
+    }
+
+    if (this.routerInfo) {
+      this.routerInfo = { ...this.routerInfo, ...info };
+      this.notify();
+    }
+    return { success: true, message: 'Configurações do gateway salvas com sucesso!' };
+  }
+
   /** Ação em massa: Bloquear múltiplos */
   async bulkBlockDevices(deviceIds: string[]): Promise<number> {
     let count = 0;
@@ -465,6 +483,22 @@ class NetworkService {
         console.error(err);
       }
     });
+  }
+
+  getPollingInterval(): number {
+    return Number(localStorage.getItem('inwifi_polling_rate')) || 4;
+  }
+
+  setPollingInterval(seconds: number) {
+    const validRate = Math.max(1, Math.min(60, Number(seconds) || 4));
+    localStorage.setItem('inwifi_polling_rate', String(validRate));
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+    }
+    this.pollInterval = window.setInterval(() => {
+      this.pollLightTelemetry();
+    }, validRate * 1000);
+    this.notify();
   }
 
   destroy() {
