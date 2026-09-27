@@ -47,6 +47,49 @@ function handleRoutes(middlewares: any) {
       return;
     }
 
+    // Route: /api/router/ping?ip=...
+    if (url.includes('/api/router/ping')) {
+      const urlObj = new URL(url, 'http://localhost');
+      const targetIp = urlObj.searchParams.get('ip') || '';
+
+      if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(targetIp)) {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.end(JSON.stringify({ error: 'Endereço IP inválido.' }));
+        return;
+      }
+
+      exec(`ping -a -n 1 -w 1000 ${targetIp}`, (err, stdout) => {
+        const matchHost = stdout.match(/Disparando ([^\s]+) \[(.*?)\]/i) || stdout.match(/Pinging ([^\s]+) \[(.*?)\]/i);
+        const ttlMatch = stdout.match(/TTL=(\d+)/i);
+        const timeMatch = stdout.match(/tempo[<=](\d+)ms/i) || stdout.match(/time[<=](\d+)ms/i);
+        const isLess1ms = stdout.includes('<1ms') || stdout.includes('tempo<1ms');
+
+        const latency = isLess1ms ? 1 : (timeMatch ? parseInt(timeMatch[1], 10) : null);
+        const ttl = ttlMatch ? parseInt(ttlMatch[1], 10) : null;
+        const rawHostname = matchHost ? matchHost[1] : null;
+        const hostname = rawHostname && rawHostname !== targetIp ? rawHostname : null;
+
+        let osEstimate = 'Dispositivo de Rede (Padrão)';
+        if (ttl === 128) osEstimate = 'Sistema Windows (PC / Notebook)';
+        else if (ttl === 64) osEstimate = 'Linux / Android / iOS / macOS';
+        else if (ttl === 255) osEstimate = 'Roteador / Switch / Gateway';
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.end(JSON.stringify({
+          success: true,
+          ip: targetIp,
+          alive: !err && !!ttlMatch,
+          latencyMs: latency,
+          ttl: ttl,
+          hostname: hostname,
+          osEstimate: osEstimate
+        }));
+      });
+      return;
+    }
+
     // Route: /api/router/devices or /inwifi/api/router/devices
     if (url.endsWith('/api/router/devices')) {
       exec('arp -a', (err, stdout) => {
@@ -61,6 +104,7 @@ function handleRoutes(middlewares: any) {
 
         // Add local host interface
         const ifaces = os.networkInterfaces();
+        const hostName = os.hostname();
         for (const [name, addrs] of Object.entries(ifaces)) {
           if (addrs) {
             for (const a of addrs) {
@@ -68,7 +112,7 @@ function handleRoutes(middlewares: any) {
                 devices.push({
                   ip: a.address,
                   mac: a.mac.toUpperCase(),
-                  hostname: `Host-Console-${name}`
+                  hostname: hostName || `Host-Console-${name}`
                 });
               }
             }
