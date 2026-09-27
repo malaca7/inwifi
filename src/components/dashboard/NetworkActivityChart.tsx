@@ -144,12 +144,12 @@ export const NetworkActivityChart: React.FC<NetworkActivityChartProps> = ({
         >
           <defs>
             <linearGradient id="dlGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#00D2FF" stop-opacity="0.35" />
-              <stop offset="100%" stop-color="#0066FF" stop-opacity="0.0" />
+              <stop offset="0%" stopColor="#00D2FF" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#0066FF" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#3B82F6" />
-              <stop offset="100%" stop-color="#00D2FF" />
+              <stop offset="0%" stopColor="#3B82F6" />
+              <stop offset="100%" stopColor="#00D2FF" />
             </linearGradient>
           </defs>
 
