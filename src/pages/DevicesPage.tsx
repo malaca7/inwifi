@@ -4,7 +4,8 @@ import {
   ShieldCheck, Pause, Play, Eye, ArrowDownCircle, 
   HardDrive, Smartphone, Laptop, Laptop2, Tv, Cpu, Gamepad2, AlertCircle,
   Zap, Server, Radio, Download, CheckSquare, Square,
-  Check, RefreshCw, Sparkles, Tag, Shield, Wifi, Lock, Cable
+  Check, RefreshCw, Sparkles, Tag, Shield, Wifi, Lock, Cable,
+  LayoutGrid, List, Copy
 } from 'lucide-react';
 import { Device, RouterCapabilities } from '../types';
 import { DeviceIcon, DeviceStatusBadge } from '../components/devices/DeviceIcon';
@@ -34,6 +35,19 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   // Stable device positions (order only refreshes on page refresh, tab switch, filter change, or manual refresh)
   const [stableOrderIds, setStableOrderIds] = useState<string[]>([]);
   const [manualRefreshCount, setManualRefreshCount] = useState(0);
+
+  // View mode: 'cards' (Grid de cards sem overflow) or 'table' (Tabela compacta)
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
+    return (localStorage.getItem('inwifi_devices_view_mode') as 'cards' | 'table') || 'cards';
+  });
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+
+  const handleCopy = (text: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
 
   // Bulk Selection
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set());
@@ -376,7 +390,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in w-full min-w-0 max-w-full">
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -530,12 +544,12 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             />
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Controls: Status, Sort, Reorder, View Mode */}
+          <div className="flex items-center gap-2 flex-wrap">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
+              className="flex-1 sm:flex-initial px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
             >
               <option value="all">Status: Todos ({devices.length})</option>
               <option value="wlan">Wi-Fi (WLAN: 7 aparelhos)</option>
@@ -548,14 +562,13 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               <option value="random_mac">MAC Privado (Apple/Android)</option>
             </select>
 
-            {/* Sort Filter */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
+              className="flex-1 sm:flex-initial px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
             >
-              <option value="speed">Maior Vazão Atual</option>
-              <option value="consumption">Maior Consumo Total</option>
+              <option value="speed">Maior Vazão</option>
+              <option value="consumption">Maior Consumo</option>
               <option value="name">Ordem Alfabética</option>
               <option value="lastSeen">Visto Recentemente</option>
             </select>
@@ -568,8 +581,44 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               title="Posições fixadas para evitar oscilações. Clique para reordenar agora segundo os dados atuais."
             >
               <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden md:inline">Atualizar Ordem</span>
+              <span className="hidden sm:inline">Reordenar</span>
             </button>
+
+            {/* View Mode Toggle: Cards / Tabela */}
+            <div className="flex items-center bg-slate-950 border border-slate-800 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('cards');
+                  localStorage.setItem('inwifi_devices_view_mode', 'cards');
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'cards'
+                    ? 'bg-cyan-500 text-black shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Visualização em Grade de Cards (Sem barra de rolagem)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cards</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('table');
+                  localStorage.setItem('inwifi_devices_view_mode', 'table');
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-cyan-500 text-black shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Visualização em Tabela Compacta"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Tabela</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -656,39 +705,264 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
           </div>
         </div>
       )}
+           {/* DEVICES PRESENTATION (CARDS OR COMPACT TABLE) */}
+      {sortedDevices.length === 0 ? (
+        <div className="rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark p-12 text-center space-y-2">
+          <AlertCircle className="w-8 h-8 text-slate-500 mx-auto" />
+          <h3 className="text-sm font-bold text-white">Nenhum dispositivo encontrado</h3>
+          <p className="text-xs text-slate-400">Tente ajustar seus termos de busca ou filtros.</p>
+        </div>
+      ) : viewMode === 'cards' ? (
+        /* MODERN CARD GRID (100% Responsive, Zero Horizontal Scroll) */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4 w-full min-w-0">
+          {sortedDevices.map((device) => {
+            const isSelected = selectedDeviceIds.has(device.id);
+            const isRandom = isRandomizedMac(device.mac);
+            const pingInfo = pingStates[device.id];
+            const isCopied = copiedText === device.ip;
 
-      {/* DEVICES TABLE / LIST */}
-      <div className="rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark overflow-hidden">
-        
-        {sortedDevices.length === 0 ? (
-          <div className="p-12 text-center space-y-2">
-            <AlertCircle className="w-8 h-8 text-slate-500 mx-auto" />
-            <h3 className="text-sm font-bold text-white">Nenhum dispositivo encontrado</h3>
-            <p className="text-xs text-slate-400">Tente ajustar seus termos de busca ou filtros.</p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table View (hidden on mobile) */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            return (
+              <div
+                key={device.id}
+                onClick={() => handleSelectDevice(device)}
+                className={`p-4 sm:p-5 rounded-3xl bg-neutral-950/80 border transition-all duration-200 cursor-pointer group hover:border-cyan-500/50 hover:bg-neutral-900/60 relative overflow-hidden flex flex-col justify-between shadow-card-dark min-w-0 ${
+                  isSelected ? 'border-cyan-500 bg-cyan-950/20 shadow-glow-sm' : 'border-neutral-800/80'
+                }`}
+              >
+                {/* Card Top: Checkbox, Icon, Name, Hostname, Edit, Status */}
+                <div>
+                  <div className="flex items-start justify-between gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Selection Checkbox */}
+                      <button
+                        onClick={(e) => handleToggleSelect(device.id, e)}
+                        className="text-neutral-500 hover:text-white transition flex-shrink-0"
+                        title={isSelected ? 'Desmarcar' : 'Selecionar'}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-cyan-400" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      {/* Device Icon */}
+                      <DeviceIcon
+                        category={device.category}
+                        band={device.band}
+                        status={device.status}
+                        size="md"
+                      />
+
+                      {/* Name & Hostname */}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-bold text-white group-hover:text-cyan-300 transition text-sm truncate">
+                            {device.customName || device.originalHostname}
+                          </span>
+                          <button
+                            onClick={(e) => handleOpenRename(device, e)}
+                            className="opacity-70 group-hover:opacity-100 p-1 text-neutral-400 hover:text-cyan-400 rounded transition flex-shrink-0"
+                            title="Editar apelido ou proprietário"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {device.customName && (
+                          <div className="text-[10px] text-neutral-400 font-mono truncate">
+                            ({device.originalHostname})
+                          </div>
+                        )}
+                        {device.ownerName && (
+                          <div className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 inline-block mt-0.5 font-medium truncate max-w-full">
+                            Dono: {device.ownerName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <DeviceStatusBadge status={device.status} />
+                      <div className="flex items-center gap-1">
+                        {device.isStaticIp && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                            IP FIXO
+                          </span>
+                        )}
+                        {device.priority === 'high' && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            GAMER
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2-Column Info Grid: IP, Band/Signal, MAC, Vendor */}
+                  <div className="mt-3.5 pt-3 border-t border-neutral-900 grid grid-cols-2 gap-2 text-xs">
+                    {/* IP Address */}
+                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
+                      <span className="text-[10px] text-neutral-400 block font-medium">Endereço IP</span>
+                      <div className="flex items-center justify-between gap-1 mt-0.5 min-w-0">
+                        <span className="text-cyan-400 font-mono font-semibold truncate text-[11px] sm:text-xs">
+                          {device.ip}
+                        </span>
+                        <button
+                          onClick={(e) => handleCopy(device.ip, e)}
+                          className="text-neutral-400 hover:text-cyan-400 p-0.5 rounded transition flex-shrink-0"
+                          title="Copiar IP"
+                        >
+                          {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Connection Band & Signal */}
+                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
+                      <span className="text-[10px] text-neutral-400 block font-medium">Conexão / Sinal</span>
+                      <div className="flex items-center gap-1.5 mt-0.5 truncate">
+                        {device.band === '5GHz' ? (
+                          <>
+                            <Wifi className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                            <span className="text-blue-300 font-bold text-[11px] truncate">5GHz (SSID5)</span>
+                          </>
+                        ) : device.band === '2.4GHz' ? (
+                          <>
+                            <Wifi className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                            <span className="text-cyan-300 font-bold text-[11px] truncate">2.4GHz</span>
+                          </>
+                        ) : (
+                          <>
+                            <Cable className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                            <span className="text-neutral-300 font-medium text-[11px] truncate">Cabo LAN</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-[9px] text-neutral-400 font-mono mt-0.5 truncate">
+                        {device.band === 'ethernet' ? 'Gigabit 1000M' : `${device.signalStrength} dBm`}
+                      </div>
+                    </div>
+
+                    {/* MAC Address */}
+                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
+                      <span className="text-[10px] text-neutral-400 block font-medium">Endereço MAC</span>
+                      <div className="flex items-center justify-between gap-1 mt-0.5 min-w-0">
+                        <span className="text-neutral-300 font-mono text-[10px] truncate">
+                          {device.mac}
+                        </span>
+                        {isRandom && (
+                          <span className="text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold flex-shrink-0">
+                            PRIV
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Vendor */}
+                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
+                      <span className="text-[10px] text-neutral-400 block font-medium">Fabricante</span>
+                      <div className="text-white font-medium text-[11px] truncate mt-0.5">
+                        {device.manufacturer}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Telemetry / Traffic */}
+                  <div className="mt-2.5 px-3 py-2 rounded-xl bg-neutral-900/40 border border-neutral-800/40 flex items-center justify-between text-xs min-w-0">
+                    <div className="flex items-center gap-1.5 font-mono text-emerald-400 text-xs font-semibold truncate">
+                      <ArrowDownCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
+                    </div>
+                    <div className="text-[10px] text-neutral-400 font-mono flex-shrink-0">
+                      {formatBytes(device.totalDownloadBytes)} total
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Actions Footer */}
+                <div 
+                  className="mt-3.5 pt-3 border-t border-neutral-900 flex items-center justify-between gap-1.5 flex-wrap min-w-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    {/* Ping Latency Test */}
+                    <button
+                      onClick={(e) => handleQuickPing(device, e)}
+                      disabled={pingInfo?.loading}
+                      className="px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-cyan-300 text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer flex-shrink-0"
+                      title="Testar Ping / Latência agora"
+                    >
+                      <Radio className={`w-3 h-3 text-cyan-400 ${pingInfo?.loading ? 'animate-spin' : ''}`} />
+                      <span>{pingInfo && !pingInfo.loading && pingInfo.latency !== null ? `${pingInfo.latency}ms` : 'Ping'}</span>
+                    </button>
+
+                    {/* Pause / Resume */}
+                    <button
+                      onClick={(e) => handleTogglePause(device, e)}
+                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition flex items-center gap-1 cursor-pointer flex-shrink-0 ${
+                        device.status === 'paused'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300'
+                      }`}
+                      title={device.status === 'paused' ? 'Retomar Conexão' : 'Pausar Conexão'}
+                    >
+                      {device.status === 'paused' ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                      <span>{device.status === 'paused' ? 'Retomar' : 'Pausar'}</span>
+                    </button>
+
+                    {/* Block / Unblock */}
+                    <button
+                      onClick={(e) => handleToggleBlock(device, e)}
+                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition flex items-center gap-1 cursor-pointer flex-shrink-0 ${
+                        device.status === 'blocked'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : 'bg-neutral-900 hover:bg-rose-950/30 text-rose-400 hover:border-rose-500/40 border-neutral-800'
+                      }`}
+                      title={device.status === 'blocked' ? 'Liberar Dispositivo' : 'Bloquear Dispositivo'}
+                    >
+                      {device.status === 'blocked' ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+                      <span>{device.status === 'blocked' ? 'Liberar' : 'Bloquear'}</span>
+                    </button>
+                  </div>
+
+                  {/* View Full Details Button */}
+                  <button
+                    onClick={() => handleSelectDevice(device)}
+                    className="p-1.5 px-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition cursor-pointer flex items-center gap-1 text-[11px] font-semibold ml-auto flex-shrink-0"
+                    title="Ver detalhes completos do dispositivo"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Detalhes</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* COMPACT TABLE VIEW (No Horizontal Scrollbar, Auto-fitted on Desktop, Cards on Mobile) */
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark overflow-hidden w-full">
+            <table className="w-full text-left text-xs table-auto">
+              <thead className="bg-slate-950/90 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 <tr>
-                  <th className="py-4 px-4 w-10 text-center">
+                  <th className="py-3.5 px-3 w-10 text-center">
                     <button onClick={handleSelectAll} className="text-slate-400 hover:text-white transition">
                       {selectedDeviceIds.size === filteredDevices.length && filteredDevices.length > 0 ? (
-                        <CheckSquare className="w-4 h-4 text-brand-400" />
+                        <CheckSquare className="w-4 h-4 text-cyan-400" />
                       ) : (
                         <Square className="w-4 h-4" />
                       )}
                     </button>
                   </th>
-                  <th className="py-4 px-4">Dispositivo & Identificação</th>
-                  <th className="py-4 px-4">Endereço IP & MAC</th>
-                  <th className="py-4 px-4">Fabricante & OUI</th>
-                  <th className="py-4 px-4">Banda / Sinal</th>
-                  <th className="py-4 px-4">Vazão Instantânea</th>
-                  <th className="py-4 px-4">Status & Config</th>
-                  <th className="py-4 px-5 text-right">Ações Imediatas</th>
+                  <th className="py-3.5 px-3">Dispositivo & Fabricante</th>
+                  <th className="py-3.5 px-3">Endereço IP & MAC</th>
+                  <th className="py-3.5 px-3">Conexão & Sinal</th>
+                  <th className="py-3.5 px-3">Vazão Instantânea</th>
+                  <th className="py-3.5 px-3">Status</th>
+                  <th className="py-3.5 px-4 text-right">Ações Rápidas</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50">
@@ -696,104 +970,95 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                   const isSelected = selectedDeviceIds.has(device.id);
                   const isRandom = isRandomizedMac(device.mac);
                   const pingInfo = pingStates[device.id];
+                  const isCopied = copiedText === device.ip;
 
                   return (
                     <tr 
                       key={device.id} 
-                      onClick={() => setSelectedDevice(device)}
+                      onClick={() => handleSelectDevice(device)}
                       className={`hover:bg-slate-900/60 transition cursor-pointer group ${
-                        isSelected ? 'bg-brand-950/20' : ''
+                        isSelected ? 'bg-cyan-950/20' : ''
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-3 px-4 text-center" onClick={(e) => handleToggleSelect(device.id, e)}>
+                      <td className="py-3 px-3 text-center" onClick={(e) => handleToggleSelect(device.id, e)}>
                         <button className="text-slate-500 hover:text-white transition">
                           {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-brand-400" />
+                            <CheckSquare className="w-4 h-4 text-cyan-400" />
                           ) : (
                             <Square className="w-4 h-4" />
                           )}
                         </button>
                       </td>
 
-                      {/* Name & Custom Identification */}
-                      <td className="py-3.5 px-4 min-w-[200px]">
-                        <div className="flex items-center gap-3">
+                      {/* Device & Vendor */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <DeviceIcon
                             category={device.category}
                             band={device.band}
                             status={device.status}
-                            size="md"
+                            size="sm"
                           />
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-white group-hover:text-brand-300 transition text-sm truncate">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-bold text-white group-hover:text-cyan-300 transition text-xs truncate">
                                 {device.customName || device.originalHostname}
                               </span>
                               <button
                                 onClick={(e) => handleOpenRename(device, e)}
-                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-brand-400 rounded transition"
-                                title="Renomear / Atribuir Dono"
+                                className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-cyan-400 rounded transition"
+                                title="Renomear"
                               >
-                                <Edit2 className="w-3.5 h-3.5" />
+                                <Edit2 className="w-3 h-3" />
                               </button>
                             </div>
-
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              {device.customName && (
-                                <span className="text-[10px] text-slate-400 font-mono">
-                                  ({device.originalHostname})
-                                </span>
-                              )}
-                              {device.ownerName && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
-                                  Dono: {device.ownerName}
-                                </span>
-                              )}
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 truncate">
+                              <span>{device.manufacturer}</span>
+                              {device.customName && <span>• ({device.originalHostname})</span>}
                             </div>
                           </div>
                         </div>
                       </td>
 
                       {/* IP & MAC */}
-                      <td className="py-3.5 px-4 font-mono">
-                        <div className="text-cyan-400 font-semibold">{device.ip}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                      <td className="py-3 px-3 font-mono">
+                        <div className="flex items-center gap-1">
+                          <span className="text-cyan-400 font-semibold">{device.ip}</span>
+                          <button
+                            onClick={(e) => handleCopy(device.ip, e)}
+                            className="text-slate-500 hover:text-cyan-400 transition"
+                            title="Copiar IP"
+                          >
+                            {isCopied ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                           <span>{device.mac}</span>
                           {isRandom && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-bold">
-                              PRIVADO
+                            <span className="text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-bold">
+                              PRIV
                             </span>
                           )}
                         </div>
                       </td>
 
-                      {/* Vendor */}
-                      <td className="py-3.5 px-4">
-                        <span className="text-white font-medium block truncate max-w-[140px]">
-                          {device.manufacturer}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {device.mac.substring(0, 8)}
-                        </span>
-                      </td>
-
-                      {/* Band & Signal */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-200 flex items-center gap-1.5 text-xs">
+                      {/* Connection Band & Signal */}
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-slate-200 flex items-center gap-1 text-xs">
                           {device.band === '5GHz' ? (
                             <>
-                              <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                              <Wifi className="w-3 h-3 text-blue-400 flex-shrink-0" />
                               <span className="text-blue-300 font-bold">5GHz (SSID5)</span>
                             </>
                           ) : device.band === '2.4GHz' ? (
                             <>
-                              <Wifi className="w-3.5 h-3.5 text-cyan-400" />
+                              <Wifi className="w-3 h-3 text-cyan-400 flex-shrink-0" />
                               <span className="text-cyan-300 font-bold">2.4GHz</span>
                             </>
                           ) : (
                             <>
-                              <Cable className="w-3.5 h-3.5 text-neutral-400" />
+                              <Cable className="w-3 h-3 text-neutral-400 flex-shrink-0" />
                               <span>Cabo LAN</span>
                             </>
                           )}
@@ -804,121 +1069,71 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                       </td>
 
                       {/* Traffic */}
-                      <td className="py-3.5 px-4 font-mono">
-                        {device.status === 'online' ? (
-                          <>
-                            <div className="text-emerald-400 font-bold flex items-center gap-1">
-                              <ArrowDownCircle className="w-3.5 h-3.5" />
-                              <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
-                            </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
-                              {formatBytes(device.totalDownloadBytes)} total
-                            </div>
-                          </>
-                        ) : (
-                          <span className="text-slate-500 font-mono">0 Kbps</span>
-                        )}
-                      </td>
-
-                      {/* Status & Badges */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col gap-1 items-start">
-                          <DeviceStatusBadge status={device.status} />
-
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {device.isStaticIp && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                                IP FIXO
-                              </span>
-                            )}
-                            {device.priority === 'high' && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                GAMER / ALTA
-                              </span>
-                            )}
-                          </div>
+                      <td className="py-3 px-3 font-mono">
+                        <div className="text-emerald-400 font-bold flex items-center gap-1 text-xs">
+                          <ArrowDownCircle className="w-3 h-3" />
+                          <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          {formatBytes(device.totalDownloadBytes)} total
                         </div>
                       </td>
 
-                      {/* Action Buttons Toolbar */}
-                      <td className="py-3.5 px-5 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          
-                          {/* Quick Ping Button */}
-                          <button
-                            onClick={(e) => handleQuickPing(device, e)}
-                            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-800 transition"
-                            title="Testar Ping / Latência agora"
-                          >
-                            <Radio className={`w-3.5 h-3.5 ${pingInfo?.loading ? 'animate-spin text-emerald-400' : ''}`} />
-                          </button>
-
-                          {/* Ping latency badge inline if tested */}
-                          {pingInfo && !pingInfo.loading && (
-                            <span className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold ${
-                              pingInfo.alive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-                            }`}>
-                              {pingInfo.alive ? `${pingInfo.latency}ms` : 'Timeout'}
+                      {/* Status */}
+                      <td className="py-3 px-3">
+                        <div className="flex flex-col gap-1 items-start">
+                          <DeviceStatusBadge status={device.status} />
+                          {device.isStaticIp && (
+                            <span className="px-1.5 py-0.2 rounded text-[8px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                              IP FIXO
                             </span>
                           )}
+                        </div>
+                      </td>
 
-                          {/* Quick Kick Wi-Fi Button */}
-                          {capabilities.deviceKick && (
-                            <button
-                              onClick={(e) => handleQuickKick(device, e)}
-                              className="p-2 rounded-xl bg-slate-900 hover:bg-amber-950/40 text-slate-400 hover:text-amber-300 border border-slate-800 hover:border-amber-500/40 transition"
-                              title="Expulsar do Wi-Fi (Kick Reconnect)"
-                            >
-                              <Zap className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                      {/* Quick Actions */}
+                      <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Ping */}
+                          <button
+                            onClick={(e) => handleQuickPing(device, e)}
+                            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition"
+                            title="Testar Ping"
+                          >
+                            <Radio className={`w-3.5 h-3.5 ${pingInfo?.loading ? 'animate-spin text-cyan-400' : ''}`} />
+                          </button>
 
-                          {/* Quick Static IP Toggle */}
-                          {capabilities.staticIpReservation && (
-                            <button
-                              onClick={(e) => handleToggleStaticIp(device, e)}
-                              className={`p-2 rounded-xl border transition ${
-                                device.isStaticIp 
-                                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' 
-                                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-800'
-                              }`}
-                              title={device.isStaticIp ? 'IP Estático Ativo (Clique para liberar)' : 'Fixar IP Estático no DHCP'}
-                            >
-                              <Server className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          {/* Quick Pause/Resume */}
+                          {/* Pause */}
                           <button
                             onClick={(e) => handleTogglePause(device, e)}
-                            className={`p-2 rounded-xl border transition ${
+                            className={`p-1.5 rounded-lg border transition ${
                               device.status === 'paused'
                                 ? 'bg-amber-600 text-white border-amber-500'
                                 : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
                             }`}
-                            title={device.status === 'paused' ? 'Retomar Conexão' : 'Pausar Temporariamente'}
+                            title={device.status === 'paused' ? 'Retomar Conexão' : 'Pausar'}
                           >
                             {device.status === 'paused' ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
                           </button>
 
-                          {/* Quick Block/Unblock */}
+                          {/* Block */}
                           <button
                             onClick={(e) => handleToggleBlock(device, e)}
-                            className={`p-2 rounded-xl border transition ${
+                            className={`p-1.5 rounded-lg border transition ${
                               device.status === 'blocked'
                                 ? 'bg-emerald-600 text-white border-emerald-500'
                                 : 'bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border-slate-800 hover:border-rose-500/40'
                             }`}
-                            title={device.status === 'blocked' ? 'Desbloquear Acesso' : 'Bloquear Dispositivo'}
+                            title={device.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
                           >
                             {device.status === 'blocked' ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
                           </button>
 
-                          {/* View Complete Panel */}
+                          {/* Details */}
                           <button
                             onClick={() => setSelectedDevice(device)}
-                            className="p-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white transition shadow-sm"
-                            title="Abrir Painel Completo de Diagnóstico"
+                            className="p-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition shadow-sm"
+                            title="Abrir Detalhes"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -931,23 +1146,24 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             </table>
           </div>
 
-          {/* Mobile Native App Cards View (md:hidden) */}
-          <div className="md:hidden divide-y divide-neutral-800/80">
+          {/* On mobile, fallback to cards so it NEVER creates a horizontal scrollbar */}
+          <div className="md:hidden grid grid-cols-1 gap-3.5 w-full min-w-0">
             {sortedDevices.map((device) => {
               const isSelected = selectedDeviceIds.has(device.id);
+              const isRandom = isRandomizedMac(device.mac);
               const pingInfo = pingStates[device.id];
+              const isCopied = copiedText === device.ip;
 
               return (
-                <div 
+                <div
                   key={device.id}
                   onClick={() => handleSelectDevice(device)}
-                  className={`p-4 transition cursor-pointer active:bg-neutral-900 ${
-                    isSelected ? 'bg-cyan-950/20' : ''
+                  className={`p-4 rounded-3xl bg-neutral-950/80 border transition cursor-pointer active:bg-neutral-900 min-w-0 ${
+                    isSelected ? 'border-cyan-500 bg-cyan-950/20' : 'border-neutral-800/80'
                   }`}
                 >
-                  {/* Top Row: Icon, Names, Band & Status */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex items-start justify-between gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <DeviceIcon
                         category={device.category}
                         band={device.band}
@@ -955,57 +1171,48 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                         size="md"
                       />
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-white text-sm truncate">
-                            {device.customName || device.originalHostname}
-                          </span>
-                          {device.customName && (
-                            <span className="text-[10px] text-neutral-400 font-mono truncate">
-                              ({device.originalHostname})
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2 mt-1 text-xs font-mono">
-                          <span className="text-cyan-400 font-semibold">{device.ip}</span>
+                        <span className="font-bold text-white text-sm truncate block">
+                          {device.customName || device.originalHostname}
+                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-xs font-mono text-cyan-400">
+                          <span>{device.ip}</span>
                           <span className="text-neutral-600">•</span>
-                          <span className="text-neutral-400">{device.manufacturer}</span>
+                          <span className="text-neutral-400 font-sans truncate">{device.manufacturer}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <DeviceStatusBadge status={device.status} />
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-800 text-neutral-300 flex items-center gap-1">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-900 text-neutral-300 flex items-center gap-1 border border-neutral-800">
                         {device.band === '5GHz' ? <Wifi className="w-2.5 h-2.5 text-blue-400" /> : device.band === '2.4GHz' ? <Wifi className="w-2.5 h-2.5 text-cyan-400" /> : <Cable className="w-2.5 h-2.5 text-neutral-400" />}
                         <span>{device.band === '5GHz' ? '5GHz (SSID5)' : device.band === '2.4GHz' ? '2.4GHz' : 'Cabo LAN'}</span>
                       </span>
                     </div>
                   </div>
 
-                  {/* Bottom Row: Traffic & Quick Action Buttons */}
-                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-neutral-900 text-xs">
-                    <div className="flex items-center gap-1.5 font-mono text-emerald-400 text-xs">
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-neutral-900 text-xs min-w-0">
+                    <div className="flex items-center gap-1.5 font-mono text-emerald-400 text-xs font-semibold">
                       <ArrowDownCircle className="w-3.5 h-3.5" />
                       <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
                     </div>
 
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleInlinePing(device)}
                         disabled={pingInfo?.loading}
-                        className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[11px] font-semibold transition flex items-center gap-1"
+                        className="px-2 py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-[11px] font-semibold border border-neutral-800 flex items-center gap-1"
                       >
-                        <Zap className={`w-3 h-3 text-amber-400 ${pingInfo?.loading ? 'animate-spin' : ''}`} />
-                        <span>{pingInfo?.latency !== undefined && pingInfo.latency !== null ? `${pingInfo.latency}ms` : 'Ping'}</span>
+                        <Zap className={`w-3 h-3 text-cyan-400 ${pingInfo?.loading ? 'animate-spin' : ''}`} />
+                        <span>{pingInfo && !pingInfo.loading && pingInfo.latency !== null ? `${pingInfo.latency}ms` : 'Ping'}</span>
                       </button>
 
                       <button
                         onClick={(e) => handleToggleBlock(device, e)}
-                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition flex items-center gap-1 ${
+                        className={`px-2 py-1 rounded-xl text-[11px] font-semibold border flex items-center gap-1 ${
                           device.status === 'blocked'
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-neutral-800 text-rose-400 hover:bg-rose-500/20'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            : 'bg-neutral-900 text-rose-400 border-neutral-800'
                         }`}
                       >
                         <ShieldAlert className="w-3 h-3" />
@@ -1014,10 +1221,10 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
 
                       <button
                         onClick={() => handleSelectDevice(device)}
-                        className="p-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-cyan-400 transition"
-                        title="Ver detalhes"
+                        className="p-1 px-2 rounded-xl bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold flex items-center gap-1"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-3 h-3" />
+                        <span>Ver</span>
                       </button>
                     </div>
                   </div>
@@ -1027,7 +1234,6 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
           </div>
         </>
       )}
-    </div>
 
       {/* Quick Rename & Owner Modal */}
       {deviceToRename && (

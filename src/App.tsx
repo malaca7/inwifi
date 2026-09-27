@@ -146,8 +146,8 @@ export const App: React.FC = () => {
           unreadAlertsCount={unreadAlertsCount}
         />
 
-        {/* Main Content Area - Scrolls independently without moving the sidebar or header */}
-        <main id="main-scroll-area" className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto pb-24 lg:pb-8">
+        {/* Main Content Area - Scrolls independently without moving the sidebar or header, with zero horizontal overflow */}
+        <main id="main-scroll-area" className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full overflow-y-auto overflow-x-hidden pb-24 lg:pb-8 min-w-0">
           {renderActivePage()}
         </main>
       </div>
