@@ -157,7 +157,10 @@ export const App: React.FC = () => {
         }}
         unreadCount={unreadAlertsCount}
         isDrawerOpen={isMobileMenuOpen}
+        onToggleDrawer={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         onCloseDrawer={() => setIsMobileMenuOpen(false)}
+        capabilities={capabilities}
+        onOpenRouterModal={() => setIsRouterModalOpen(true)}
       />
 
       {/* Router Connection & Management Overlay Modal */}
