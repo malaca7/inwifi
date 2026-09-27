@@ -2,34 +2,56 @@
 <html lang="pt-BR" class="dark" style="background-color: #000000; color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/inwifi/logo.png" />
-    <link rel="apple-touch-icon" href="/inwifi/logo.png" />
+    <link rel="icon" type="image/png" href="./logo.png" />
+    <link rel="apple-touch-icon" href="./logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="In-Wifi — Central de Inteligência de Rede: Gerenciador profissional de redes LAN, roteadores e dispositivos conectados com monitoramento em tempo real e controle de acesso." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="In-Wifi" />
-    <link rel="manifest" href="/inwifi/manifest.json" />
+    <link rel="manifest" href="./manifest.json" />
     <title>In-Wifi — Central de Inteligência de Rede</title>
     <style>html,body{color:#ededed;min-height:100vh;margin:0;padding:0;background-color:#000!important}#initial-loader{z-index:9999;background-color:#000;flex-direction:column;justify-content:center;align-items:center;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;display:flex;position:fixed;inset:0}.loader-logo{-o-object-fit:contain;object-fit:contain;width:auto;max-width:240px;height:48px;margin-bottom:20px;animation:1.8s ease-in-out infinite inwifi-pulse}.loader-status{color:#00d2ff;letter-spacing:.04em;align-items:center;gap:10px;font-size:13px;font-weight:600;display:flex}.loader-dot{background-color:#00d2ff;border-radius:50%;width:8px;height:8px;animation:1.4s cubic-bezier(0,0,.2,1) infinite inwifi-ping;box-shadow:0 0 12px #00d2ff}@keyframes inwifi-pulse{0%,to{opacity:.7;transform:scale(.98)}50%{opacity:1;transform:scale(1.02)}}@keyframes inwifi-ping{0%{opacity:1;transform:scale(.8)}50%{opacity:.4;transform:scale(1.5)}to{opacity:1;transform:scale(.8)}}</style>
-    <script type="module" crossorigin src="/inwifi/assets/index-D1jnhfdh.js"></script>
-    <link rel="stylesheet" crossorigin href="/inwifi/assets/index-AhPxs4vi.css">
+    <script type="module" crossorigin src="./assets/index-Aeg0MGet.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-AhPxs4vi.css">
   </head>
   <body class="bg-black text-neutral-100 antialiased selection:bg-cyan-500 selection:text-black" style="background-color: #000000;">
     <div id="root">
       <div id="initial-loader">
         <img 
-          src="/inwifi/logo.png" 
+          src="./logo.png" 
           alt="In-Wifi" 
           class="loader-logo" 
           onerror="this.style.display='none'"
         />
         <div class="loader-status">
           <div class="loader-dot"></div>
-          <span>Carregando Central In-Wifi...</span>
+          <span id="loader-text">Carregando Central In-Wifi...</span>
+        </div>
+        <div id="loader-fallback" style="display:none; margin-top: 18px; text-align: center;">
+          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 10px 0;">A inicialização está demorando mais que o esperado.</p>
+          <button onclick="localStorage.clear(); if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}; location.reload(true);" style="padding: 8px 18px; background: #00D2FF; color: #000; border: none; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer;">
+            Limpar Cache & Recarregar
+          </button>
         </div>
       </div>
     </div>
+    <script>
+      setTimeout(function() {
+        var fb = document.getElementById('loader-fallback');
+        if (fb && document.getElementById('initial-loader')) {
+          fb.style.display = 'block';
+        }
+      }, 5000);
+      window.addEventListener('error', function() {
+        var lt = document.getElementById('loader-text');
+        var fb = document.getElementById('loader-fallback');
+        if (lt && fb) {
+          lt.innerText = 'Recuperando inicialização...';
+          fb.style.display = 'block';
+        }
+      });
+    </script>
   </body>
 </html>
