@@ -38,37 +38,31 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-dark-bg/90 backdrop-blur-xl border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-all">
+    <header className="sticky top-0 z-40 w-full bg-black/95 backdrop-blur-xl border-b border-neutral-800/90 px-4 lg:px-8 py-2.5 transition-all">
       <div className="flex items-center justify-between gap-4">
         
-        {/* Left: Mobile Toggle & Brand Logo */}
+        {/* Left: Mobile Toggle & Official Brand Logo */}
         <div className="flex items-center gap-3">
           <button
             onClick={onToggleMobileMenu}
-            className="p-2 lg:hidden text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/60 transition"
+            className="p-2 lg:hidden text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-900 transition"
             aria-label="Abrir menu"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-cyan-400 p-[1.5px] shadow-glow-sm">
-              <div className="w-full h-full bg-[#06080F] rounded-[14px] flex items-center justify-center">
-                <Wifi className="w-5 h-5 text-cyan-400 animate-pulse-subtle" />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg font-black tracking-tight text-white">IN-WIFI</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                  PRO
-                </span>
-              </div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest hidden sm:block">
-                Network Intelligence Center
-              </p>
-            </div>
-          </div>
+          <a 
+            href="#" 
+            onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="flex items-center gap-2 group transition-transform duration-200 hover:scale-[1.02]"
+            title="In-Wifi — Central de Inteligência de Rede"
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt="IN-WIFI — Central de Inteligência de Rede"
+              className="h-9 sm:h-11 w-auto max-w-[200px] sm:max-w-[260px] object-contain drop-shadow-[0_2px_12px_rgba(0,180,255,0.25)] select-none"
+            />
+          </a>
         </div>
 
         {/* Center: Live Real Hardware Status Badge & Admin Indicator */}

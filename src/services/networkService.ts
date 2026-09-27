@@ -1,5 +1,5 @@
 import { adapterService, RouterAdapter } from '../adapters';
-import { Device, RouterInfo, RouterCapabilities, NetworkEvent, TrafficPoint, NetworkTopologyItem } from '../types';
+import { Device, RouterInfo, RouterCapabilities, NetworkEvent, TrafficPoint, NetworkTopologyItem, WifiSettings } from '../types';
 import { notificationService } from './notificationService';
 
 class NetworkService {
@@ -311,6 +311,29 @@ class NetworkService {
   /** Escanear portas abertas no dispositivo */
   async scanDevicePorts(deviceId: string): Promise<{ openPorts: number[]; portsScanned: number }> {
     return await this.currentAdapter.scanDevicePorts(deviceId);
+  }
+
+  /** Obter configurações atuais de Wi-Fi */
+  async getWifiSettings(): Promise<WifiSettings> {
+    return await this.currentAdapter.getWifiSettings();
+  }
+
+  /** Atualizar configurações de Wi-Fi e Rádio (SSID, senha, canais, etc.) */
+  async updateWifiSettings(settings: Partial<WifiSettings>): Promise<{ success: boolean; message?: string; error?: string }> {
+    const res = await this.currentAdapter.updateWifiSettings(settings);
+    if (res.success) {
+      await this.refreshData();
+    }
+    return res;
+  }
+
+  /** Alterar senha de administrador do roteador */
+  async changeAdminPassword(newPassword: string, oldPassword?: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    const res = await this.currentAdapter.changeAdminPassword(newPassword, oldPassword);
+    if (res.success) {
+      await this.refreshData();
+    }
+    return res;
   }
 
   /** Ação em massa: Bloquear múltiplos */

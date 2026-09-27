@@ -82,9 +82,9 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dark-bg text-slate-100 flex flex-col selection:bg-brand-500 selection:text-white pb-16 lg:pb-0">
+    <div className="h-screen bg-black text-neutral-100 flex flex-col overflow-hidden selection:bg-cyan-500 selection:text-black">
       
-      {/* Top Main Navigation Header */}
+      {/* Top Main Navigation Header - Fixed at Top */}
       <Header
         onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         isMobileMenuOpen={isMobileMenuOpen}
@@ -92,20 +92,21 @@ export const App: React.FC = () => {
         onNavigateToRouters={() => setCurrentTab('routers')}
       />
 
-      <div className="flex-1 flex w-full">
-        {/* Full Desktop Sidebar */}
+      <div className="flex-1 flex w-full overflow-hidden">
+        {/* Fixed Desktop Sidebar - Stays fixed on left */}
         <Sidebar
           currentTab={currentTab}
           onSelectTab={(tab) => {
             setCurrentTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const mainEl = document.getElementById('main-scroll-area');
+            if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           capabilities={capabilities}
           unreadAlertsCount={unreadAlertsCount}
         />
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+        {/* Main Content Area - Scrolls independently without moving the sidebar or header */}
+        <main id="main-scroll-area" className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto pb-24 lg:pb-8">
           {renderActivePage()}
         </main>
       </div>
@@ -116,7 +117,8 @@ export const App: React.FC = () => {
         onSelectTab={(tab) => {
           setCurrentTab(tab);
           setIsMobileMenuOpen(false);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          const mainEl = document.getElementById('main-scroll-area');
+          if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         unreadCount={unreadAlertsCount}
         isDrawerOpen={isMobileMenuOpen}

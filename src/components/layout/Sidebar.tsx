@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-dark-surface border-r border-slate-800/80 flex flex-col justify-between p-4 hidden lg:flex min-h-[calc(100vh-65px)]">
+    <aside className="w-64 flex-shrink-0 bg-dark-surface border-r border-slate-800/80 flex flex-col justify-between p-4 hidden lg:flex h-full overflow-y-auto select-none">
       <div className="space-y-6">
         
         {/* Navigation list */}
@@ -75,14 +75,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-gradient-to-r from-brand-600 to-brand-700 text-white shadow-glow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
+                    ? 'bg-neutral-800/90 text-white border border-neutral-700 shadow-[0_2px_12px_rgba(0,0,0,0.6)]'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900/80'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className={isActive ? 'text-white' : 'text-slate-400'}>
+                  <span className={isActive ? 'text-cyan-400' : 'text-neutral-400'}>
                     {item.icon}
                   </span>
                   <span>{item.label}</span>

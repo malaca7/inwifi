@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { 
   Router, RefreshCw, Lock, Unlock, Check, ShieldCheck, 
-  Power, Zap, Key, Wifi, Server, Radio, AlertTriangle
+  Power, Zap, Key, Wifi, Server, Radio, AlertTriangle, Sliders
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
 import { RouterCapabilities } from '../types';
 import { ConfirmModal } from '../components/common/ConfirmModal';
+import { WifiSettingsPanel } from '../components/router/WifiSettingsPanel';
 
 interface RoutersPageProps {
   capabilities: RouterCapabilities;
@@ -258,6 +259,14 @@ export const RoutersPage: React.FC<RoutersPageProps> = ({ capabilities }) => {
         )}
       </div>
 
+      {/* WI-FI & RADIO MANAGEMENT PANEL */}
+      <WifiSettingsPanel
+        isAdmin={isAdmin}
+        onOpenAdminLogin={() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+
       {/* ACTIVE GATEWAY HARDWARE SPECS CARD */}
       {routerInfo && (
         <div className="p-6 rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark space-y-4">
@@ -406,6 +415,21 @@ export const RoutersPage: React.FC<RoutersPageProps> = ({ capabilities }) => {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1">Escanear portas abertas (HTTP, SSH, SMB, RDP) em qualquer aparelho da rede.</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 mt-0.5">
+              <Sliders className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-white">Gestão Wi-Fi & Senhas</h4>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${capabilities.wifiManagement ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                  {capabilities.wifiManagement ? 'DESBLOQUEADO' : 'REQUER ADMIN'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">Altera nome (SSID) 2.4/5GHz, troca senha, cria rede de visitas e ajusta canais.</p>
             </div>
           </div>
 

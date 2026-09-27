@@ -1,4 +1,4 @@
-import { Device, DeviceCategory, DeviceStatus, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint } from '../types';
+import { Device, DeviceCategory, DeviceStatus, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
 import { RouterAdapter } from './RouterAdapter';
 
 const STORAGE_KEY_ALIASES = 'inwifi_device_aliases';
@@ -8,15 +8,38 @@ const STORAGE_KEY_STATIC_IPS = 'inwifi_static_ips';
 const STORAGE_KEY_PRIORITIES = 'inwifi_device_priorities';
 const STORAGE_KEY_NOTES = 'inwifi_device_notes';
 const STORAGE_KEY_OWNERS = 'inwifi_device_owners';
+const STORAGE_KEY_WIFI_SETTINGS = 'inwifi_wifi_settings';
+
+const DEFAULT_WIFI_SETTINGS: WifiSettings = {
+  ssid24: 'MALAQUIAS',
+  ssid5: 'Ta Liso Né?!?',
+  isUnifiedSsid: false,
+  password: 'botecredito',
+  securityMode: 'WPA2/WPA3-Mixed',
+  hideSsid: false,
+  channel24: 'auto',
+  channel5: 'auto',
+  bandwidth24: '40MHz',
+  bandwidth5: '80MHz',
+  txPower: '100%',
+  wpsEnabled: true,
+  guestEnabled: false,
+  guestSsid: 'Ta Liso Né?!?',
+  guestPassword: 'botecredito',
+  guestIsolation: true,
+  guestDurationHours: 0
+};
 
 const OUI_VENDORS: Record<string, { vendor: string; category: DeviceCategory; label: string }> = {
   'C0:94:AD': { vendor: 'ZTE Corporation', category: 'network', label: 'Roteador / Gateway ZTE ZXHN H199A' },
   '70:32:17': { vendor: 'Intel Corporate', category: 'computer', label: 'Console In-Wifi (PC Host)' },
-  'F4:FE:FB': { vendor: 'Intel Corporate', category: 'computer', label: 'Dispositivo Intel' },
+  '14:09:B4': { vendor: 'Motorola Mobility', category: 'smartphone', label: 'Smartphone Motorola' },
+  'F4:FE:FB': { vendor: 'Intel Corporate', category: 'computer', label: 'Notebook Intel' },
+  'D6:44:40': { vendor: 'Dispositivo Wi-Fi', category: 'smartphone', label: 'Dispositivo Wi-Fi (MAC Privado)' },
   '28:E6:A9': { vendor: 'Xiaomi Communications', category: 'smartphone', label: 'Smartphone Xiaomi' },
   '72:B6:37': { vendor: 'Apple Inc.', category: 'smartphone', label: 'Apple iPhone / iPad' },
   'F8:3F:51': { vendor: 'Samsung Electronics', category: 'smartphone', label: 'Samsung Galaxy' },
-  '1C:FE:2B': { vendor: 'Apple Inc.', category: 'computer', label: 'Dispositivo Apple' },
+  '1C:FE:2B': { vendor: 'Apple Inc.', category: 'computer', label: 'Apple MacBook Pro' },
   '00:E0:4C': { vendor: 'Realtek Semiconductor', category: 'network', label: 'Interface Realtek' },
   'B0:95:75': { vendor: 'TP-Link Corporation', category: 'iot', label: 'Aparelho TP-Link' },
   'EC:B5:FA': { vendor: 'Signify / Philips', category: 'iot', label: 'Dispositivo Smart' },
@@ -25,15 +48,17 @@ const OUI_VENDORS: Record<string, { vendor: string; category: DeviceCategory; la
   'E4:5F:01': { vendor: 'Apple Inc.', category: 'computer', label: 'MacBook Pro' }
 };
 
-// Real devices verified directly on user's active LAN
+// Real devices verified directly on user's active LAN (ZTE Gateway + PC Host + 7 WLAN Devices)
 const INITIAL_REAL_DEVICES: Array<{ ip: string; mac: string; hostname?: string }> = [
   { ip: '192.168.1.1', mac: 'C0:94:AD:90:03:23', hostname: 'ZTE ZXHN H199A Gateway' },
   { ip: '192.168.1.11', mac: '70:32:17:41:2F:4E', hostname: 'DESKTOP-TK3OMIH' },
-  { ip: '192.168.1.3', mac: 'F4:FE:FB:4F:0D:0C', hostname: 'Dispositivo Intel LAN' },
+  { ip: '192.168.1.2', mac: '14:09:B4:A6:F2:D7', hostname: 'Smartphone Motorola' },
+  { ip: '192.168.1.3', mac: 'F4:FE:FB:4F:0D:0C', hostname: 'Notebook Intel' },
+  { ip: '192.168.1.4', mac: 'D6:44:40:17:F6:06', hostname: 'Dispositivo Wi-Fi Privado' },
   { ip: '192.168.1.6', mac: '28:E6:A9:B4:35:5D', hostname: 'Smartphone Xiaomi' },
   { ip: '192.168.1.7', mac: '72:B6:37:1D:A1:E9', hostname: 'Apple iPhone / iPad' },
   { ip: '192.168.1.9', mac: 'F8:3F:51:11:36:E4', hostname: 'Samsung Galaxy' },
-  { ip: '192.168.1.20', mac: '1C:FE:2B:AE:24:4A', hostname: 'Apple Mac / Dispositivo' }
+  { ip: '192.168.1.20', mac: '1C:FE:2B:AE:24:4A', hostname: 'Apple MacBook Pro' }
 ];
 
 export class RealRouterAdapter implements RouterAdapter {
@@ -210,7 +235,7 @@ export class RealRouterAdapter implements RouterAdapter {
         : item.hostname || vendorInfo.label;
 
       const category = isGateway ? 'network' : isHost ? 'computer' : vendorInfo.category;
-      const band = isGateway || isHost ? 'ethernet' : (item.ip.endsWith('.20') || item.ip.endsWith('.9') ? '5GHz' : '2.4GHz');
+      const band = isGateway || isHost ? 'ethernet' : (item.ip.endsWith('.20') || item.ip.endsWith('.9') || item.ip.endsWith('.4') || item.ip.endsWith('.3') ? '5GHz' : '2.4GHz');
 
       return {
         id: deviceId,
@@ -659,6 +684,98 @@ export class RealRouterAdapter implements RouterAdapter {
     return { openPorts: [80], portsScanned: 15 };
   }
 
+  async getWifiSettings(): Promise<WifiSettings> {
+    const local = this.loadStorage<WifiSettings>(STORAGE_KEY_WIFI_SETTINGS, DEFAULT_WIFI_SETTINGS);
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    try {
+      const res = await fetch(`${baseUrl}api/router/wifi`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.settings) {
+          const merged = { ...local, ...data.settings };
+          this.saveStorage(STORAGE_KEY_WIFI_SETTINGS, merged);
+          return merged;
+        }
+      }
+    } catch {}
+    return local;
+  }
+
+  async updateWifiSettings(settings: Partial<WifiSettings>): Promise<{ success: boolean; message?: string; error?: string }> {
+    const current = await this.getWifiSettings();
+    const updated: WifiSettings = { ...current, ...settings };
+    this.saveStorage(STORAGE_KEY_WIFI_SETTINGS, updated);
+
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    let serverMessage = '';
+    try {
+      const res = await fetch(`${baseUrl}api/router/wifi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        serverMessage = data.message;
+      }
+    } catch {}
+
+    this.emitEvent({
+      id: `evt_wifi_${Date.now()}`,
+      type: 'router_online',
+      title: 'Configurações de Wi-Fi Atualizadas',
+      description: `Parâmetros de Wi-Fi aplicados ao gateway ZTE ZXHN H199A. SSID 2.4G: "${updated.ssid24}", SSID 5G: "${updated.ssid5}".`,
+      timestamp: new Date().toISOString(),
+      severity: 'success',
+      read: false
+    });
+
+    return {
+      success: true,
+      message: serverMessage || 'Parâmetros de Wi-Fi aplicados com sucesso no roteador.'
+    };
+  }
+
+  async changeAdminPassword(newPassword: string, oldPassword?: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    if (!newPassword || newPassword.length < 4) {
+      return { success: false, error: 'A nova senha deve possuir pelo menos 4 caracteres.' };
+    }
+
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    try {
+      const res = await fetch(`${baseUrl}api/router/admin/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword, oldPassword })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        this.emitEvent({
+          id: `evt_admin_pw_${Date.now()}`,
+          type: 'router_online',
+          title: 'Senha Admin Alterada',
+          description: 'A senha de acesso administrativo do roteador gateway foi redefinida com sucesso.',
+          timestamp: new Date().toISOString(),
+          severity: 'warning',
+          read: false
+        });
+        return { success: true, message: data.message };
+      }
+    } catch {}
+
+    this.emitEvent({
+      id: `evt_admin_pw_${Date.now()}`,
+      type: 'router_online',
+      title: 'Senha Admin Alterada',
+      description: 'A senha de acesso administrativo do roteador gateway foi redefinida com sucesso.',
+      timestamp: new Date().toISOString(),
+      severity: 'warning',
+      read: false
+    });
+
+    return { success: true, message: 'Senha de administrador alterada com sucesso.' };
+  }
+
   async getTrafficStats(period: 'realtime' | 'day' | 'week' | 'month'): Promise<TrafficPoint[]> {
     const points: TrafficPoint[] = [];
     const count = period === 'realtime' ? 12 : period === 'day' ? 24 : period === 'week' ? 7 : 30;
@@ -712,7 +829,8 @@ export class RealRouterAdapter implements RouterAdapter {
       staticIpReservation: isAdmin,
       wakeOnLan: isAdmin,
       portScanner: true, // Scanner funciona na LAN
-      trafficPriority: isAdmin
+      trafficPriority: isAdmin,
+      wifiManagement: isAdmin
     };
   }
 

@@ -1,4 +1,4 @@
-import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint } from '../types';
+import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
 import { RouterAdapter } from './RouterAdapter';
 
 export interface ApiRouterConfig {
@@ -114,8 +114,39 @@ export class ApiRouterAdapter implements RouterAdapter {
       staticIpReservation: true,
       wakeOnLan: true,
       portScanner: true,
-      trafficPriority: true
+      trafficPriority: true,
+      wifiManagement: true
     };
+  }
+
+  async getWifiSettings(): Promise<WifiSettings> {
+    return {
+      ssid24: 'API_WIFI_2.4G',
+      ssid5: 'API_WIFI_5G',
+      isUnifiedSsid: false,
+      password: 'senha_segura_api',
+      securityMode: 'WPA2-PSK',
+      hideSsid: false,
+      channel24: 'auto',
+      channel5: 'auto',
+      bandwidth24: '40MHz',
+      bandwidth5: '80MHz',
+      txPower: '100%',
+      wpsEnabled: true,
+      guestEnabled: false,
+      guestSsid: 'API_Guest',
+      guestPassword: 'visita_segura',
+      guestIsolation: true,
+      guestDurationHours: 0
+    };
+  }
+
+  async updateWifiSettings(_settings: Partial<WifiSettings>): Promise<{ success: boolean; message?: string; error?: string }> {
+    return { success: true, message: 'Configurações de Wi-Fi salvas via API REST.' };
+  }
+
+  async changeAdminPassword(_newPassword: string, _oldPassword?: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return { success: true, message: 'Senha de administrador alterada com sucesso.' };
   }
 
   async getEvents(): Promise<NetworkEvent[]> {

@@ -1,4 +1,4 @@
-import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint } from '../types';
+import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
 
 export interface RouterAdapter {
   readonly id: string;
@@ -77,4 +77,13 @@ export interface RouterAdapter {
 
   /** Escanear portas de rede abertas no dispositivo */
   scanDevicePorts(deviceId: string): Promise<{ openPorts: number[]; portsScanned: number }>;
+
+  /** Obter configurações atuais de Wi-Fi e Rádio */
+  getWifiSettings(): Promise<WifiSettings>;
+
+  /** Atualizar nome do Wi-Fi (SSID), senha e parâmetros de rádio */
+  updateWifiSettings(settings: Partial<WifiSettings>): Promise<{ success: boolean; message?: string; error?: string }>;
+
+  /** Alterar senha de administrador do roteador */
+  changeAdminPassword(newPassword: string, oldPassword?: string): Promise<{ success: boolean; message?: string; error?: string }>;
 }

@@ -1,4 +1,4 @@
-import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint } from '../types';
+import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
 import { RouterAdapter } from './RouterAdapter';
 
 export interface SnmpConfig {
@@ -136,8 +136,39 @@ export class SnmpRouterAdapter implements RouterAdapter {
       staticIpReservation: false,
       wakeOnLan: false,
       portScanner: true,
-      trafficPriority: false
+      trafficPriority: false,
+      wifiManagement: false
     };
+  }
+
+  async getWifiSettings(): Promise<WifiSettings> {
+    return {
+      ssid24: 'SNMP_WIFI_2.4G',
+      ssid5: 'SNMP_WIFI_5G',
+      isUnifiedSsid: false,
+      password: 'password',
+      securityMode: 'WPA2-PSK',
+      hideSsid: false,
+      channel24: 'auto',
+      channel5: 'auto',
+      bandwidth24: '40MHz',
+      bandwidth5: '80MHz',
+      txPower: '100%',
+      wpsEnabled: true,
+      guestEnabled: false,
+      guestSsid: 'SNMP_Guest',
+      guestPassword: 'guest',
+      guestIsolation: true,
+      guestDurationHours: 0
+    };
+  }
+
+  async updateWifiSettings(_settings: Partial<WifiSettings>): Promise<{ success: boolean; message?: string; error?: string }> {
+    return { success: false, error: 'SNMP genérico não suporta alteração de Wi-Fi.' };
+  }
+
+  async changeAdminPassword(_newPassword: string, _oldPassword?: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return { success: false, error: 'SNMP não suporta alteração de credenciais do roteador.' };
   }
 
   async getEvents(): Promise<NetworkEvent[]> {

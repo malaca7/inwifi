@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { 
   Search, Edit2, ShieldAlert, 
   ShieldCheck, Pause, Play, Eye, ArrowDownCircle, 
-  HardDrive, Smartphone, Laptop, Tv, Cpu, Gamepad2, AlertCircle,
+  HardDrive, Smartphone, Laptop, Laptop2, Tv, Cpu, Gamepad2, AlertCircle,
   Zap, Server, Radio, Download, CheckSquare, Square,
-  Check, RefreshCw, Sparkles, Tag, Shield
+  Check, RefreshCw, Sparkles, Tag, Shield, Wifi
 } from 'lucide-react';
 import { Device, RouterCapabilities } from '../types';
 import { DeviceIcon, DeviceStatusBadge } from '../components/devices/DeviceIcon';
@@ -66,6 +66,8 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
     
     let matchesStatus = true;
     if (statusFilter === 'all') matchesStatus = true;
+    else if (statusFilter === 'wlan') matchesStatus = d.band === '2.4GHz' || d.band === '5GHz';
+    else if (statusFilter === 'lan') matchesStatus = d.band === 'ethernet';
     else if (statusFilter === 'static') matchesStatus = !!d.isStaticIp;
     else if (statusFilter === 'priority_high') matchesStatus = d.priority === 'high';
     else if (statusFilter === 'random_mac') matchesStatus = isRandomizedMac(d.mac);
@@ -308,7 +310,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={() => handleExportInventory('csv')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition cursor-pointer"
             title="Exportar inventário de rede em CSV"
           >
             <Download className="w-3.5 h-3.5" />
@@ -317,12 +319,103 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
 
           <button
             onClick={() => handleExportInventory('json')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition cursor-pointer"
             title="Exportar inventário de rede em JSON"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Exportar JSON</span>
           </button>
+        </div>
+      </div>
+
+      {/* Network Overview Summary Counters */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div 
+          onClick={() => setStatusFilter('wlan')}
+          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+            statusFilter === 'wlan' 
+              ? 'bg-cyan-950/40 border-cyan-500/50 shadow-glow-sm' 
+              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+          }`}
+        >
+          <div>
+            <span className="text-slate-400 block text-[11px]">Wi-Fi (WLAN)</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-lg font-bold text-white font-mono">
+                {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length}
+              </span>
+              <span className="text-[10px] text-emerald-400 font-bold">Roteador</span>
+            </div>
+          </div>
+          <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+            <Wifi className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setStatusFilter('lan')}
+          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+            statusFilter === 'lan' 
+              ? 'bg-brand-950/40 border-brand-500/50' 
+              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+          }`}
+        >
+          <div>
+            <span className="text-slate-400 block text-[11px]">Rede Cabeada (LAN)</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-lg font-bold text-white font-mono">
+                {devices.filter(d => d.band === 'ethernet').length}
+              </span>
+              <span className="text-[10px] text-slate-500">Gateway + PC</span>
+            </div>
+          </div>
+          <div className="p-2 rounded-xl bg-slate-800 text-slate-300">
+            <Radio className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setStatusFilter('static')}
+          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+            statusFilter === 'static' 
+              ? 'bg-emerald-950/40 border-emerald-500/50' 
+              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+          }`}
+        >
+          <div>
+            <span className="text-slate-400 block text-[11px]">IP Estático Fixo</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-lg font-bold text-white font-mono">
+                {devices.filter(d => d.isStaticIp).length}
+              </span>
+              <span className="text-[10px] text-slate-500">DHCP Bind</span>
+            </div>
+          </div>
+          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setStatusFilter('all')}
+          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+            statusFilter === 'all' 
+              ? 'bg-neutral-900 border-neutral-700' 
+              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+          }`}
+        >
+          <div>
+            <span className="text-slate-400 block text-[11px]">Total na Rede</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-lg font-bold text-white font-mono">
+                {devices.length}
+              </span>
+              <span className="text-[10px] text-emerald-400">100% Online</span>
+            </div>
+          </div>
+          <div className="p-2 rounded-xl bg-neutral-800 text-white">
+            <Laptop2 className="w-4 h-4" />
+          </div>
         </div>
       </div>
 
@@ -361,7 +454,9 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
             >
-              <option value="all">Status: Todos</option>
+              <option value="all">Status: Todos ({devices.length})</option>
+              <option value="wlan">Wi-Fi (WLAN: 7 aparelhos)</option>
+              <option value="lan">Cabo de Rede (LAN)</option>
               <option value="online">Online (Navegando)</option>
               <option value="blocked">Bloqueados</option>
               <option value="paused">Pausados</option>

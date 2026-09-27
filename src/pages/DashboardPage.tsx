@@ -111,25 +111,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* KPI 2: Novos Aparelhos */}
+        {/* KPI 2: Wi-Fi (WLAN) Roteador */}
         <div 
-          onClick={onNavigateToAlerts}
-          className="p-5 rounded-3xl bg-dark-card border border-slate-800/80 hover:border-brand-500/40 transition cursor-pointer group shadow-card-dark"
+          onClick={onNavigateToDevices}
+          className="p-5 rounded-3xl bg-dark-card border border-slate-800/80 hover:border-cyan-500/40 transition cursor-pointer group shadow-card-dark"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Novos na Rede (24h)</span>
-            <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 group-hover:scale-110 transition">
+            <span className="text-xs font-semibold text-slate-400">Wi-Fi (WLAN) Roteador</span>
+            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:scale-110 transition">
               <Wifi className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
-              {newDevicesCount}
+            <span className="text-2xl sm:text-3xl font-extrabold text-cyan-400 font-mono">
+              {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length}
             </span>
-            <span className="text-xs text-brand-400 font-medium">detectados</span>
+            <span className="text-xs text-emerald-400 font-semibold font-mono">/ 7 Sincronizados</span>
           </div>
-          <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
-            <span>Com alerta automático ativo</span>
+          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>{devices.filter(d => d.band === '2.4GHz').length} em 2.4GHz</span>
+            <span>•</span>
+            <span>{devices.filter(d => d.band === '5GHz').length} em 5GHz</span>
           </div>
         </div>
 

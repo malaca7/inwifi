@@ -53,6 +53,29 @@ export interface RouterCapabilities {
   wakeOnLan: boolean; // Magic Packet WoL
   portScanner: boolean; // Scanner de portas abertas
   trafficPriority: boolean; // QoS prioritário
+  wifiManagement: boolean; // Alterar SSID, senha e opções Wi-Fi
+}
+
+export interface WifiSettings {
+  ssid24: string;
+  ssid5: string;
+  isUnifiedSsid: boolean;
+  password: string;
+  securityMode: 'WPA2-PSK' | 'WPA3-SAE' | 'WPA2/WPA3-Mixed';
+  hideSsid: boolean;
+  channel24: string;
+  channel5: string;
+  bandwidth24: '20MHz' | '40MHz' | 'auto';
+  bandwidth5: '20MHz' | '40MHz' | '80MHz' | 'auto';
+  txPower: '100%' | '75%' | '50%' | '25%';
+  wpsEnabled: boolean;
+  
+  // Rede de Convidados
+  guestEnabled: boolean;
+  guestSsid: string;
+  guestPassword: string;
+  guestIsolation: boolean;
+  guestDurationHours?: number;
 }
 
 export type RouterProtocol = 'api' | 'snmp' | 'ssh';

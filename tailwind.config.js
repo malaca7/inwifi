@@ -9,28 +9,42 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#0b193d',
-          electric: '#0066FF',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#38bdf8',
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#1f1f1f',
+          900: '#121212',
+          950: '#080808',
+          electric: '#00D2FF',
           cyan: '#00D2FF',
-          glow: '#00A3FF'
+          glow: '#38BDF8'
         },
         dark: {
-          bg: '#06080F',
-          surface: '#0B0F19',
-          card: '#101726',
-          cardHover: '#141D30',
-          border: '#1E293B',
-          borderGlow: '#1E3A8A'
+          bg: '#000000',
+          surface: '#080808',
+          card: '#121212',
+          cardHover: '#181818',
+          border: '#222222',
+          borderGlow: '#333333'
+        },
+        slate: {
+          50: '#fafafa',
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
+          500: '#71717a',
+          600: '#52525b',
+          700: '#333333',
+          800: '#222222',
+          850: '#171717',
+          900: '#101010',
+          950: '#050505'
         }
       },
       fontFamily: {
@@ -38,10 +52,10 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace']
       },
       boxShadow: {
-        'glow-sm': '0 0 15px -3px rgba(0, 102, 255, 0.25)',
-        'glow-md': '0 0 25px -5px rgba(0, 102, 255, 0.35)',
+        'glow-sm': '0 0 15px -3px rgba(0, 210, 255, 0.25)',
+        'glow-md': '0 0 25px -5px rgba(0, 210, 255, 0.35)',
         'glow-cyan': '0 0 25px -5px rgba(0, 210, 255, 0.35)',
-        'card-dark': '0 8px 30px rgba(0, 0, 0, 0.6)',
+        'card-dark': '0 8px 30px rgba(0, 0, 0, 0.85)',
       },
       animation: {
         'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
