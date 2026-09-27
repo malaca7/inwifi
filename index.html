@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR" class="dark" style="background-color: #000000; color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/inwifi/logo.png" />
@@ -12,10 +12,24 @@
     <meta name="apple-mobile-web-app-title" content="In-Wifi" />
     <link rel="manifest" href="/inwifi/manifest.json" />
     <title>In-Wifi — Central de Inteligência de Rede</title>
-    <script type="module" crossorigin src="/inwifi/assets/index-BVZ7yfYW.js"></script>
-    <link rel="stylesheet" crossorigin href="/inwifi/assets/index-DLRTkaWQ.css">
+    <style>html,body{color:#ededed;min-height:100vh;margin:0;padding:0;background-color:#000!important}#initial-loader{z-index:9999;background-color:#000;flex-direction:column;justify-content:center;align-items:center;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;display:flex;position:fixed;inset:0}.loader-logo{-o-object-fit:contain;object-fit:contain;width:auto;max-width:240px;height:48px;margin-bottom:20px;animation:1.8s ease-in-out infinite inwifi-pulse}.loader-status{color:#00d2ff;letter-spacing:.04em;align-items:center;gap:10px;font-size:13px;font-weight:600;display:flex}.loader-dot{background-color:#00d2ff;border-radius:50%;width:8px;height:8px;animation:1.4s cubic-bezier(0,0,.2,1) infinite inwifi-ping;box-shadow:0 0 12px #00d2ff}@keyframes inwifi-pulse{0%,to{opacity:.7;transform:scale(.98)}50%{opacity:1;transform:scale(1.02)}}@keyframes inwifi-ping{0%{opacity:1;transform:scale(.8)}50%{opacity:.4;transform:scale(1.5)}to{opacity:1;transform:scale(.8)}}</style>
+    <script type="module" crossorigin src="/inwifi/assets/index-nYKtTS7G.js"></script>
+    <link rel="stylesheet" crossorigin href="/inwifi/assets/index-ywoCfqHb.css">
   </head>
-  <body class="bg-black text-neutral-100 antialiased selection:bg-cyan-500 selection:text-black">
-    <div id="root"></div>
+  <body class="bg-black text-neutral-100 antialiased selection:bg-cyan-500 selection:text-black" style="background-color: #000000;">
+    <div id="root">
+      <div id="initial-loader">
+        <img 
+          src="/inwifi/logo.png" 
+          alt="In-Wifi" 
+          class="loader-logo" 
+          onerror="this.style.display='none'"
+        />
+        <div class="loader-status">
+          <div class="loader-dot"></div>
+          <span>Carregando Central In-Wifi...</span>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
