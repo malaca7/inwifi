@@ -1,21 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR" style="background:#000000;">
   <head>
     <meta charset="utf-8">
     <title>In-Wifi — Redirecionando...</title>
+    <style>
+      body {
+        background-color: #000000;
+        color: #00D2FF;
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+      }
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(0, 210, 255, 0.2);
+        border-top-color: #00D2FF;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 12px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
     <script type="text/javascript">
-      // Single Page Apps for GitHub Pages
-      // https://github.com/rafgraph/spa-github-pages
-      var pathSegmentsToKeep = 1;
-
       var l = window.location;
       var repoSegment = l.pathname.split('/')[1] === 'inwifi' ? '/inwifi' : '';
-      var path = l.pathname.slice(repoSegment.length);
-      var newUrl = l.protocol + '//' + l.host + repoSegment + '/#' + path + (l.search ? l.search : '') + l.hash;
+      var rawPath = l.pathname.slice(repoSegment.length);
+      var cleanPath = rawPath.replace(/^\/+/, '');
+      var hashPath = cleanPath ? '#/' + cleanPath : '#/dashboard';
+      var query = l.search ? l.search : '';
+      var newUrl = l.protocol + '//' + l.host + repoSegment + '/' + hashPath + query;
       window.location.replace(newUrl);
     </script>
   </head>
-  <body style="background:#000000; color:#ffffff; font-family:sans-serif; text-align:center; padding-top:20vh;">
-    <p>Redirecionando para In-Wifi...</p>
+  <body>
+    <div class="spinner"></div>
+    <div style="font-size: 14px; font-weight: 700; letter-spacing: 0.05em;">Redirecionando para Central In-Wifi...</div>
   </body>
 </html>

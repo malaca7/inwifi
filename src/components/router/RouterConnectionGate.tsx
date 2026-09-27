@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Router, Shield, Check, AlertCircle, Wifi, 
-  ArrowRight, Key, Server, Cpu, Globe, Lock, RefreshCw, Zap
+  ArrowRight, Key, Server, Cpu, Globe, Lock, RefreshCw, Zap, X
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { testDevicePing } from '../../utils/deviceIdentifier';
 
 interface RouterConnectionGateProps {
   onConnected: () => void;
+  onClose?: () => void;
 }
 
-export const RouterConnectionGate: React.FC<RouterConnectionGateProps> = ({ onConnected }) => {
+export const RouterConnectionGate: React.FC<RouterConnectionGateProps> = ({ onConnected, onClose }) => {
   const [gatewayIp, setGatewayIp] = useState('192.168.1.1');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
@@ -77,19 +78,29 @@ export const RouterConnectionGate: React.FC<RouterConnectionGateProps> = ({ onCo
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto selection:bg-cyan-500 selection:text-black">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto selection:bg-cyan-500 selection:text-black">
       
       {/* Background ambient neon glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[25rem] h-[25rem] bg-brand-600/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="relative w-full max-w-lg space-y-6">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute -top-2 right-0 p-2 text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-xl transition shadow-lg z-20 cursor-pointer"
+            title="Fechar e voltar à plataforma"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-neutral-900 border border-neutral-800 shadow-2xl mb-2">
             <img 
-              src="/inwifi/logo.png" 
+              src={`${import.meta.env.BASE_URL}logo.png`} 
               alt="inWiFi" 
               className="h-10 w-auto object-contain"
               onError={(e) => {
@@ -106,10 +117,10 @@ export const RouterConnectionGate: React.FC<RouterConnectionGateProps> = ({ onCo
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Conecte seu Roteador
+            Gerenciamento do Roteador Gateway
           </h1>
           <p className="text-xs sm:text-sm text-neutral-400 max-w-md mx-auto leading-relaxed">
-            Para liberar o acesso à plataforma e gerenciar dispositivos, tráfego e redes Wi-Fi, conecte o roteador gateway da sua rede local.
+            Conecte diretamente ao gateway da sua rede local para sincronizar configurações em tempo real.
           </p>
         </div>
 
@@ -244,11 +255,21 @@ export const RouterConnectionGate: React.FC<RouterConnectionGateProps> = ({ onCo
                 </>
               ) : (
                 <>
-                  <span>Conectar Roteador e Acessar Plataforma</span>
+                  <span>Conectar e Sincronizar Roteador</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
+
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 px-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-2 border border-neutral-800 transition cursor-pointer"
+              >
+                <span>Continuar na Plataforma In-Wifi</span>
+              </button>
+            )}
           </form>
 
           {/* Quick Notice */}

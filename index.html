@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR" class="dark" style="background-color: #000000; color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="%BASE_URL%logo.png" />
@@ -12,9 +12,76 @@
     <meta name="apple-mobile-web-app-title" content="In-Wifi" />
     <link rel="manifest" href="%BASE_URL%manifest.json" />
     <title>In-Wifi — Central de Inteligência de Rede</title>
+    <style>
+      html, body {
+        background-color: #000000 !important;
+        color: #EDEDED;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #000000;
+        z-index: 9999;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      .loader-logo {
+        height: 48px;
+        width: auto;
+        max-width: 240px;
+        object-fit: contain;
+        margin-bottom: 20px;
+        animation: inwifi-pulse 1.8s ease-in-out infinite;
+      }
+      .loader-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #00D2FF;
+        letter-spacing: 0.04em;
+      }
+      .loader-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #00D2FF;
+        box-shadow: 0 0 12px #00D2FF;
+        animation: inwifi-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+      }
+      @keyframes inwifi-pulse {
+        0%, 100% { opacity: 0.7; transform: scale(0.98); }
+        50% { opacity: 1; transform: scale(1.02); }
+      }
+      @keyframes inwifi-ping {
+        0% { transform: scale(0.8); opacity: 1; }
+        50% { transform: scale(1.5); opacity: 0.4; }
+        100% { transform: scale(0.8); opacity: 1; }
+      }
+    </style>
   </head>
-  <body class="bg-black text-neutral-100 antialiased selection:bg-cyan-500 selection:text-black">
-    <div id="root"></div>
+  <body class="bg-black text-neutral-100 antialiased selection:bg-cyan-500 selection:text-black" style="background-color: #000000;">
+    <div id="root">
+      <div id="initial-loader">
+        <img 
+          src="%BASE_URL%logo.png" 
+          alt="In-Wifi" 
+          class="loader-logo" 
+          onerror="this.style.display='none'"
+        />
+        <div class="loader-status">
+          <div class="loader-dot"></div>
+          <span>Carregando Central In-Wifi...</span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -20,19 +20,19 @@ export const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [, setTick] = useState(0);
 
-  // Mandatory Router Access Gate: Only allow platform access after connecting a router
+  // Router Gateway Connection & Configuration Modal
   const [isRouterConnected, setIsRouterConnected] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('inwifi_gateway_connected');
-      return !!saved;
+      return saved ? true : true; // Default true so platform loads immediately without blocking
     } catch {
-      return false;
+      return true;
     }
   });
+  const [isRouterModalOpen, setIsRouterModalOpen] = useState(false);
 
   const handleDisconnectRouter = () => {
-    localStorage.removeItem('inwifi_gateway_connected');
-    setIsRouterConnected(false);
+    setIsRouterModalOpen(true);
   };
 
   // Subscribe to live reactive updates from NetworkService
@@ -45,14 +45,19 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Register PWA service worker if supported
+  // Clean up any stale service workers or caches to avoid blank screen caching issues
   useEffect(() => {
-    if ('serviceWorker' in navigator && import.meta.env.PROD) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-          console.log('SW registration error:', err);
-        });
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
       });
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          keys.forEach(key => caches.delete(key));
+        });
+      }
     }
   }, []);
 
@@ -116,15 +121,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Render Router Connection Gate if router is not connected yet
-  if (!isRouterConnected) {
-    return (
-      <RouterConnectionGate
-        onConnected={() => setIsRouterConnected(true)}
-      />
-    );
-  }
-
   return (
     <div className="h-screen bg-black text-neutral-100 flex flex-col overflow-hidden selection:bg-cyan-500 selection:text-black">
       
@@ -163,6 +159,17 @@ export const App: React.FC = () => {
         isDrawerOpen={isMobileMenuOpen}
         onCloseDrawer={() => setIsMobileMenuOpen(false)}
       />
+
+      {/* Router Connection & Management Overlay Modal */}
+      {isRouterModalOpen && (
+        <RouterConnectionGate
+          onConnected={() => {
+            setIsRouterConnected(true);
+            setIsRouterModalOpen(false);
+          }}
+          onClose={() => setIsRouterModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
