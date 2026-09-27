@@ -64,6 +64,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   const [deviceToBlock, setDeviceToBlock] = useState<Device | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const devices = networkService.getDevices();
   const routerInfo = networkService.getRouterInfo();
@@ -72,6 +73,19 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   const showSuccessFeedback = (msg: string) => {
     setActionSuccess(msg);
     setTimeout(() => setActionSuccess(null), 4000);
+  };
+
+  const handleSyncWithRouter = async () => {
+    setIsSyncing(true);
+    try {
+      await networkService.refreshData();
+      setManualRefreshCount(c => c + 1);
+      showSuccessFeedback('Sincronização com o roteador concluída! Dispositivos e status atualizados.');
+    } catch {
+      //
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleInlinePing = async (dev: Device) => {
@@ -139,6 +153,8 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
     
     let matchesStatus = true;
     if (statusFilter === 'all') matchesStatus = true;
+    else if (statusFilter === 'online') matchesStatus = d.status === 'online';
+    else if (statusFilter === 'offline') matchesStatus = d.status === 'offline';
     else if (statusFilter === 'wlan') matchesStatus = d.band === '2.4GHz' || d.band === '5GHz';
     else if (statusFilter === 'lan') matchesStatus = d.band === 'ethernet';
     else if (statusFilter === 'static') matchesStatus = !!d.isStaticIp;
@@ -152,6 +168,11 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   // Re-calculate stable order IDs ONLY on mount, sort criteria change, filter change, or explicit manual refresh
   useEffect(() => {
     const list = [...filteredDevices].sort((a, b) => {
+      // Prioritize online active devices over offline history
+      if (sortBy === 'speed' || sortBy === 'lastSeen') {
+        if (a.status === 'online' && b.status !== 'online') return -1;
+        if (a.status !== 'online' && b.status === 'online') return 1;
+      }
       if (sortBy === 'speed') {
         return (b.currentDownloadSpeedKbps + b.currentUploadSpeedKbps) - (a.currentDownloadSpeedKbps + a.currentUploadSpeedKbps);
       }
@@ -404,7 +425,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             Central de Gerenciamento de Dispositivos
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Controle total, ações em massa, diagnósticos e ferramentas para todos os aparelhos conectados ({devices.length} detectados).
+            Sincronizado com roteador • <strong className="text-emerald-400 font-mono">{devices.filter(d => d.status === 'online').length} online</strong> agora • {devices.length} aparelhos registrados no histórico de rede.
           </p>
         </div>
 
@@ -431,87 +452,98 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
 
       {/* Network Overview Summary Counters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        {/* Tile 1: Online no Roteador */}
+        <div 
+          onClick={() => handleSetStatusFilter('online')}
+          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+            statusFilter === 'online' 
+              ? 'bg-emerald-950/40 border-emerald-500/50 shadow-glow-sm' 
+              : 'bg-slate-950/60 border-slate-800/80 hover:border-emerald-500/40'
+          }`}
+        >
+          <div>
+            <span className="text-slate-400 block text-[11px] font-medium">Online no Roteador</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-lg font-bold text-emerald-400 font-mono">
+                {devices.filter(d => d.status === 'online').length}
+              </span>
+              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Ativos agora
+              </span>
+            </div>
+          </div>
+          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+            <Wifi className="w-4 h-4" />
+          </div>
+        </div>
+
+        {/* Tile 2: Offline / Histórico */}
+        <div 
+          onClick={() => handleSetStatusFilter('offline')}
+          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+            statusFilter === 'offline' 
+              ? 'bg-slate-900 border-slate-600 shadow-sm' 
+              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+          }`}
+        >
+          <div>
+            <span className="text-slate-400 block text-[11px] font-medium">Offline / Histórico</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-lg font-bold text-slate-300 font-mono">
+                {devices.filter(d => d.status === 'offline').length}
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium">Desconectados</span>
+            </div>
+          </div>
+          <div className="p-2 rounded-xl bg-slate-900 text-slate-500">
+            <Radio className="w-4 h-4" />
+          </div>
+        </div>
+
+        {/* Tile 3: Wi-Fi (WLAN) Ativo */}
         <div 
           onClick={() => handleSetStatusFilter('wlan')}
           className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
             statusFilter === 'wlan' 
               ? 'bg-cyan-950/40 border-cyan-500/50 shadow-glow-sm' 
-              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+              : 'bg-slate-950/60 border-slate-800/80 hover:border-cyan-500/40'
           }`}
         >
           <div>
-            <span className="text-slate-400 block text-[11px]">Wi-Fi (WLAN)</span>
+            <span className="text-slate-400 block text-[11px] font-medium">Wi-Fi (WLAN) Ativo</span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-lg font-bold text-white font-mono">
-                {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length}
+              <span className="text-lg font-bold text-cyan-400 font-mono">
+                {devices.filter(d => d.status === 'online' && (d.band === '2.4GHz' || d.band === '5GHz')).length}
               </span>
-              <span className="text-[10px] text-emerald-400 font-bold">Roteador</span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                de {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length} cadastrados
+              </span>
             </div>
           </div>
           <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
-            <Wifi className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setStatusFilter('lan')}
-          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
-            statusFilter === 'lan' 
-              ? 'bg-brand-950/40 border-brand-500/50' 
-              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
-          }`}
-        >
-          <div>
-            <span className="text-slate-400 block text-[11px]">Rede Cabeada (LAN)</span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-lg font-bold text-white font-mono">
-                {devices.filter(d => d.band === 'ethernet').length}
-              </span>
-              <span className="text-[10px] text-slate-500">Gateway + PC</span>
-            </div>
-          </div>
-          <div className="p-2 rounded-xl bg-slate-800 text-slate-300">
             <Radio className="w-4 h-4" />
           </div>
         </div>
 
+        {/* Tile 4: Total Cadastrado */}
         <div 
-          onClick={() => setStatusFilter('static')}
-          className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
-            statusFilter === 'static' 
-              ? 'bg-emerald-950/40 border-emerald-500/50' 
-              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
-          }`}
-        >
-          <div>
-            <span className="text-slate-400 block text-[11px]">IP Estático Fixo</span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-lg font-bold text-white font-mono">
-                {devices.filter(d => d.isStaticIp).length}
-              </span>
-              <span className="text-[10px] text-slate-500">DHCP Bind</span>
-            </div>
-          </div>
-          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setStatusFilter('all')}
+          onClick={() => handleSetStatusFilter('all')}
           className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
             statusFilter === 'all' 
-              ? 'bg-neutral-900 border-neutral-700' 
+              ? 'bg-neutral-900 border-neutral-600' 
               : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
           }`}
         >
           <div>
-            <span className="text-slate-400 block text-[11px]">Total na Rede</span>
+            <span className="text-slate-400 block text-[11px] font-medium">Total na Rede</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-lg font-bold text-white font-mono">
                 {devices.length}
               </span>
-              <span className="text-[10px] text-emerald-400">100% Online</span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {devices.filter(d => d.status === 'online').length} on • {devices.filter(d => d.status === 'offline').length} off
+              </span>
             </div>
           </div>
           <div className="p-2 rounded-xl bg-neutral-800 text-white">
@@ -556,11 +588,12 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               className="flex-1 sm:flex-initial px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
             >
               <option value="all">Status: Todos ({devices.length})</option>
-              <option value="wlan">Wi-Fi (WLAN: 7 aparelhos)</option>
-              <option value="lan">Cabo de Rede (LAN)</option>
-              <option value="online">Online (Navegando)</option>
-              <option value="blocked">Bloqueados</option>
-              <option value="paused">Pausados</option>
+              <option value="online">🟢 Online no Roteador ({devices.filter(d => d.status === 'online').length})</option>
+              <option value="offline">⚪ Offline / Desconectados ({devices.filter(d => d.status === 'offline').length})</option>
+              <option value="wlan">Wi-Fi (WLAN: {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length})</option>
+              <option value="lan">Cabo de Rede (LAN: {devices.filter(d => d.band === 'ethernet').length})</option>
+              <option value="blocked">Bloqueados ({devices.filter(d => d.status === 'blocked').length})</option>
+              <option value="paused">Pausados ({devices.filter(d => d.status === 'paused').length})</option>
               <option value="static">IP Estático Reservado</option>
               <option value="priority_high">Prioridade Alta (QoS)</option>
               <option value="random_mac">MAC Privado (Apple/Android)</option>
@@ -571,21 +604,22 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               onChange={(e) => setSortBy(e.target.value as any)}
               className="flex-1 sm:flex-initial px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
             >
-              <option value="speed">Maior Vazão</option>
+              <option value="speed">Maior Vazão (Kbps)</option>
               <option value="consumption">Maior Consumo</option>
               <option value="name">Ordem Alfabética</option>
               <option value="lastSeen">Visto Recentemente</option>
             </select>
 
-            {/* Manual Reorder Button */}
+            {/* Sync with Router Button */}
             <button
               type="button"
-              onClick={() => setManualRefreshCount(c => c + 1)}
-              className="flex items-center gap-1.5 px-3 py-2.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-2xl text-xs font-semibold text-neutral-300 hover:text-white transition cursor-pointer"
-              title="Posições fixadas para evitar oscilações. Clique para reordenar agora segundo os dados atuais."
+              onClick={handleSyncWithRouter}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-brand-600/20 hover:bg-brand-600/30 border border-brand-500/40 hover:border-brand-500 text-brand-300 hover:text-white rounded-2xl text-xs font-semibold transition cursor-pointer"
+              title="Consultar roteador físico agora e sincronizar status de conexões online/offline"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Reordenar</span>
+              <RefreshCw className={`w-3.5 h-3.5 text-brand-400 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar Roteador'}</span>
             </button>
 
             {/* View Mode Toggle: Cards / Tabela */}
@@ -730,8 +764,12 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               <div
                 key={device.id}
                 onClick={() => handleSelectDevice(device)}
-                className={`p-4 sm:p-5 rounded-3xl bg-neutral-950/80 border transition-all duration-200 cursor-pointer group hover:border-cyan-500/50 hover:bg-neutral-900/60 relative overflow-hidden flex flex-col justify-between shadow-card-dark min-w-0 ${
-                  isSelected ? 'border-cyan-500 bg-cyan-950/20 shadow-glow-sm' : 'border-neutral-800/80'
+                className={`p-4 sm:p-5 rounded-3xl border transition-all duration-200 cursor-pointer group hover:border-cyan-500/50 relative overflow-hidden flex flex-col justify-between shadow-card-dark min-w-0 ${
+                  isSelected 
+                    ? 'border-cyan-500 bg-cyan-950/20 shadow-glow-sm' 
+                    : device.status === 'offline'
+                      ? 'bg-neutral-950/50 border-neutral-900/90 opacity-75 hover:opacity-100 hover:bg-neutral-900/40'
+                      : 'bg-neutral-950/80 border-neutral-800/80 hover:bg-neutral-900/60'
                 }`}
               >
                 {/* Card Top: Checkbox, Icon, Name, Model, Brand Badge, Status */}
@@ -896,11 +934,22 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                   </div>
 
                   {/* Telemetry / Traffic */}
-                  <div className="mt-2.5 px-3 py-2 rounded-xl bg-neutral-900/40 border border-neutral-800/40 flex items-center justify-between text-xs min-w-0">
-                    <div className="flex items-center gap-1.5 font-mono text-emerald-400 text-xs font-semibold truncate">
-                      <ArrowDownCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
-                    </div>
+                  <div className={`mt-2.5 px-3 py-2 rounded-xl border flex items-center justify-between text-xs min-w-0 ${
+                    device.status === 'offline'
+                      ? 'bg-neutral-950/40 border-neutral-900/60'
+                      : 'bg-neutral-900/40 border-neutral-800/40'
+                  }`}>
+                    {device.status === 'offline' ? (
+                      <div className="flex items-center gap-1.5 font-mono text-neutral-500 text-xs truncate">
+                        <span className="w-1.5 h-1.5 rounded-full bg-neutral-600 flex-shrink-0" />
+                        <span>0 Kbps • Desconectado</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 font-mono text-emerald-400 text-xs font-semibold truncate">
+                        <ArrowDownCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
+                      </div>
+                    )}
                     <div className="text-[10px] text-neutral-400 font-mono flex-shrink-0">
                       {formatBytes(device.totalDownloadBytes)} total
                     </div>
@@ -1006,7 +1055,11 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                       key={device.id} 
                       onClick={() => handleSelectDevice(device)}
                       className={`hover:bg-slate-900/60 transition cursor-pointer group ${
-                        isSelected ? 'bg-cyan-950/20' : ''
+                        isSelected 
+                          ? 'bg-cyan-950/20' 
+                          : device.status === 'offline' 
+                            ? 'opacity-70 hover:opacity-100 bg-slate-950/30' 
+                            : ''
                       }`}
                     >
                       {/* Checkbox */}
@@ -1121,10 +1174,17 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
 
                       {/* Traffic */}
                       <td className="py-3 px-3 font-mono">
-                        <div className="text-emerald-400 font-bold flex items-center gap-1 text-xs">
-                          <ArrowDownCircle className="w-3 h-3" />
-                          <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
-                        </div>
+                        {device.status === 'offline' ? (
+                          <div className="text-slate-500 font-medium flex items-center gap-1 text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-600 flex-shrink-0" />
+                            <span>0 Kbps</span>
+                          </div>
+                        ) : (
+                          <div className="text-emerald-400 font-bold flex items-center gap-1 text-xs">
+                            <ArrowDownCircle className="w-3 h-3" />
+                            <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
+                          </div>
+                        )}
                         <div className="text-[10px] text-slate-500 mt-0.5">
                           {formatBytes(device.totalDownloadBytes)} total
                         </div>

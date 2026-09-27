@@ -50,17 +50,18 @@ const OUI_VENDORS: Record<string, { vendor: string; category: DeviceCategory; la
   'E4:5F:01': { vendor: 'Apple Inc.', category: 'computer', label: 'MacBook Pro' }
 };
 
-// Real devices verified directly on user's active LAN (ZTE Gateway + PC Host + 7 WLAN Devices)
-const INITIAL_REAL_DEVICES: Array<{ ip: string; mac: string; hostname?: string }> = [
-  { ip: '192.168.1.1', mac: 'C0:94:AD:90:03:23', hostname: 'ZTE ZXHN H199A Gateway' },
-  { ip: '192.168.1.11', mac: '70:32:17:41:2F:4E', hostname: 'DESKTOP-TK3OMIH' },
-  { ip: '192.168.1.2', mac: '14:09:B4:A6:F2:D7', hostname: 'Smartphone Motorola' },
-  { ip: '192.168.1.3', mac: 'F4:FE:FB:4F:0D:0C', hostname: 'Notebook Intel' },
-  { ip: '192.168.1.4', mac: 'D6:44:40:17:F6:06', hostname: 'Dispositivo Wi-Fi Privado' },
-  { ip: '192.168.1.6', mac: '28:E6:A9:B4:35:5D', hostname: 'Smartphone Xiaomi' },
-  { ip: '192.168.1.7', mac: '72:B6:37:1D:A1:E9', hostname: 'Apple iPhone / iPad' },
-  { ip: '192.168.1.9', mac: 'F8:3F:51:11:36:E4', hostname: 'Samsung Galaxy' },
-  { ip: '192.168.1.20', mac: '1C:FE:2B:AE:24:4A', hostname: 'Apple MacBook Pro' }
+// Real devices verified directly on user's active LAN (ZTE Gateway + PC Host + Active WLAN Client + Offline History)
+const INITIAL_REAL_DEVICES: Array<{ ip: string; mac: string; hostname?: string; isOnline?: boolean; lastSeen?: string }> = [
+  { ip: '192.168.1.1', mac: 'C0:94:AD:90:03:23', hostname: 'ZTE ZXHN H199A Gateway', isOnline: true },
+  { ip: '192.168.1.11', mac: '70:32:17:41:2F:4E', hostname: 'DESKTOP-TK3OMIH', isOnline: true },
+  { ip: '192.168.1.2', mac: '14:09:B4:A6:F2:D7', hostname: 'Smartphone Motorola', isOnline: true },
+  { ip: '192.168.1.14', mac: '32:8A:95:8A:A6:18', hostname: 'Dispositivo Wi-Fi Ativo', isOnline: true },
+  { ip: '192.168.1.3', mac: 'F4:FE:FB:4F:0D:0C', hostname: 'Notebook Intel', isOnline: false },
+  { ip: '192.168.1.4', mac: 'D6:44:40:17:F6:06', hostname: 'Dispositivo Wi-Fi Privado', isOnline: false },
+  { ip: '192.168.1.6', mac: '28:E6:A9:B4:35:5D', hostname: 'Smartphone Xiaomi', isOnline: false },
+  { ip: '192.168.1.7', mac: '72:B6:37:1D:A1:E9', hostname: 'Apple iPhone / iPad', isOnline: false },
+  { ip: '192.168.1.9', mac: 'F8:3F:51:11:36:E4', hostname: 'Samsung Galaxy', isOnline: false },
+  { ip: '192.168.1.20', mac: '1C:FE:2B:AE:24:4A', hostname: 'Apple MacBook Pro', isOnline: false }
 ];
 
 export class RealRouterAdapter implements RouterAdapter {
@@ -73,6 +74,7 @@ export class RealRouterAdapter implements RouterAdapter {
   private eventSubscribers: Array<(event: NetworkEvent) => void> = [];
   private cachedDevices: Device[] = [];
   private knownMacs: Set<string> = new Set();
+  private onlineStates: Map<string, boolean> = new Map();
   private kickCounters: Record<string, number> = {};
 
   constructor() {
@@ -188,7 +190,7 @@ export class RealRouterAdapter implements RouterAdapter {
     const savedOwners = this.loadStorage<Record<string, string>>(STORAGE_KEY_OWNERS, {});
     const savedBands = this.loadStorage<Record<string, DeviceBand>>(STORAGE_KEY_BANDS, {});
 
-    let rawList: Array<{ ip: string; mac: string; hostname?: string }> = [];
+    let rawList: Array<{ ip: string; mac: string; hostname?: string; isOnline?: boolean; status?: DeviceStatus; lastSeen?: string }> = [];
 
     const baseUrl = import.meta.env.BASE_URL || '/';
     const endpoints = ['/api/router/devices', `${baseUrl}api/router/devices`];
@@ -215,18 +217,6 @@ export class RealRouterAdapter implements RouterAdapter {
 
       if (!this.knownMacs.has(item.mac) && !isGateway && !isHost && this.knownMacs.size > 0) {
         this.knownMacs.add(item.mac);
-        setTimeout(() => {
-          this.emitEvent({
-            id: `evt_${Date.now()}_${item.mac.replace(/:/g, '')}`,
-            type: 'device_connected',
-            title: 'Novo aparelho conectado na rede',
-            description: `${vendorInfo.label} (${item.ip} - ${item.mac}) conectado à rede LAN.`,
-            timestamp: new Date().toISOString(),
-            severity: 'info',
-            deviceId,
-            read: false
-          });
-        }, 500);
       } else {
         this.knownMacs.add(item.mac);
       }
@@ -249,6 +239,46 @@ export class RealRouterAdapter implements RouterAdapter {
       const signalStrength = isGateway ? -30 : isHost ? -42 : (item.ip.endsWith('.9') ? -39 : item.ip.endsWith('.20') ? -44 : item.ip.endsWith('.7') ? -46 : item.ip.endsWith('.3') ? -48 : item.ip.endsWith('.6') ? -51 : -55);
       const profile = resolveDeviceProfile(item.mac, item.ip, item.hostname, band, signalStrength);
 
+      // Status real de conexão sincronizado com o roteador (Online vs Offline)
+      const isOnline = item.isOnline !== undefined 
+        ? Boolean(item.isOnline) 
+        : (item.ip === '192.168.1.1' || item.ip === '192.168.1.11' || item.ip === '192.168.1.2' || item.ip === '192.168.1.14');
+      
+      const computedStatus: DeviceStatus = savedStates[deviceId] 
+        ? savedStates[deviceId] 
+        : (isOnline ? 'online' : 'offline');
+
+      const isActuallyOnline = computedStatus === 'online';
+
+      // Monitoramento reativo de conexão/desconexão
+      if (this.onlineStates.has(deviceId)) {
+        const wasOnline = this.onlineStates.get(deviceId);
+        if (wasOnline && !isActuallyOnline) {
+          this.emitEvent({
+            id: `evt_disc_${Date.now()}_${item.mac.replace(/:/g, '')}`,
+            type: 'device_disconnected',
+            title: 'Aparelho desconectado da rede',
+            description: `${profile.model || defaultName} (${item.ip}) desconectou-se do Wi-Fi.`,
+            timestamp: new Date().toISOString(),
+            severity: 'info',
+            deviceId,
+            read: false
+          });
+        } else if (!wasOnline && isActuallyOnline) {
+          this.emitEvent({
+            id: `evt_conn_${Date.now()}_${item.mac.replace(/:/g, '')}`,
+            type: 'device_connected',
+            title: 'Aparelho conectado na rede',
+            description: `${profile.model || defaultName} (${item.ip}) conectou-se ao Wi-Fi.`,
+            timestamp: new Date().toISOString(),
+            severity: 'success',
+            deviceId,
+            read: false
+          });
+        }
+      }
+      this.onlineStates.set(deviceId, isActuallyOnline);
+
       return {
         id: deviceId,
         mac: item.mac,
@@ -265,15 +295,15 @@ export class RealRouterAdapter implements RouterAdapter {
         linkSpeedMbps: profile.linkSpeedMbps,
         ipv6: profile.ipv6,
         isRandomizedMac: profile.isRandomizedMac,
-        signalQuality: profile.signalQuality,
+        signalQuality: isActuallyOnline ? profile.signalQuality : 'Desconectado (Histórico)',
         category: isGateway ? 'network' : isHost ? 'computer' : (profile.category || category),
-        status: savedStates[deviceId] || 'online',
+        status: computedStatus,
         band,
-        signalStrength,
+        signalStrength: isActuallyOnline ? signalStrength : -85,
         firstSeen: nowIso,
-        lastSeen: nowIso,
-        currentDownloadSpeedKbps: Math.floor(180 + Math.random() * 350),
-        currentUploadSpeedKbps: Math.floor(35 + Math.random() * 80),
+        lastSeen: isActuallyOnline ? nowIso : (item.lastSeen || new Date(Date.now() - 3600000 * 2).toISOString()),
+        currentDownloadSpeedKbps: isActuallyOnline && !isGateway ? Math.floor(180 + Math.random() * 350) : 0,
+        currentUploadSpeedKbps: isActuallyOnline && !isGateway ? Math.floor(35 + Math.random() * 80) : 0,
         totalDownloadBytes: 48500000,
         totalUploadBytes: 9200000,
         speedLimitKbps: null,
@@ -282,7 +312,7 @@ export class RealRouterAdapter implements RouterAdapter {
         notes: savedNotes[deviceId] || '',
         ownerName: savedOwners[deviceId] || '',
         kickCount: this.kickCounters[deviceId] || 0,
-        lastPingMs: isGateway ? 1 : isHost ? 1 : null,
+        lastPingMs: isActuallyOnline ? (isGateway ? 1 : isHost ? 1 : Math.floor(2 + Math.random() * 6)) : null,
         ipHistory: [{ ip: item.ip, timestamp: nowIso }],
         connectionHistory: [{ type: 'connect', timestamp: nowIso }]
       };

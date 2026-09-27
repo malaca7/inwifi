@@ -36,6 +36,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const blockedDevices = devices.filter(d => d.status === 'blocked');
   const pausedDevices = devices.filter(d => d.status === 'paused');
   
+  // Sort preview so online devices appear first, followed by highest traffic
+  const sortedPreviewDevices = [...devices].sort((a, b) => {
+    if (a.status === 'online' && b.status !== 'online') return -1;
+    if (a.status !== 'online' && b.status === 'online') return 1;
+    return (b.currentDownloadSpeedKbps + b.currentUploadSpeedKbps) - (a.currentDownloadSpeedKbps + a.currentUploadSpeedKbps);
+  });
+  
   const oneDayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const newDevicesCount = devices.filter(d => d.firstSeen >= oneDayAgo).length;
 
@@ -89,26 +96,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
-        {/* KPI 1: Conectados */}
+        {/* KPI 1: Conectados Online */}
         <div 
           onClick={onNavigateToDevices}
           className="p-5 rounded-3xl bg-dark-card border border-slate-800/80 hover:border-emerald-500/40 transition cursor-pointer group shadow-card-dark"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Aparelhos Conectados</span>
+            <span className="text-xs font-semibold text-slate-400">Online no Roteador</span>
             <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition">
               <Users className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
+            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono">
               {onlineDevices.length}
             </span>
-            <span className="text-xs text-slate-500 font-mono">/ {devices.length} total</span>
+            <span className="text-xs text-slate-400 font-mono">/ {devices.length} no total</span>
           </div>
-          <div className="mt-2 text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span>{onlineDevices.length} ativos navegando</span>
+          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between font-medium">
+            <span className="text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{onlineDevices.length} associados agora</span>
+            </span>
+            <span className="text-slate-500">
+              {devices.length - onlineDevices.length} offline
+            </span>
           </div>
         </div>
 
@@ -118,21 +130,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           className="p-5 rounded-3xl bg-dark-card border border-slate-800/80 hover:border-cyan-500/40 transition cursor-pointer group shadow-card-dark"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Wi-Fi (WLAN) Roteador</span>
+            <span className="text-xs font-semibold text-slate-400">Wi-Fi (WLAN) Ativo</span>
             <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:scale-110 transition">
               <Wifi className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-cyan-400 font-mono">
-              {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length}
+              {onlineDevices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length}
             </span>
-            <span className="text-xs text-emerald-400 font-semibold font-mono">/ 7 Sincronizados</span>
+            <span className="text-xs text-slate-400 font-mono">
+              / {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length} cadastrados
+            </span>
           </div>
           <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>{devices.filter(d => d.band === '2.4GHz').length} em 2.4GHz</span>
+            <span>{onlineDevices.filter(d => d.band === '2.4GHz').length} em 2.4G</span>
             <span>•</span>
-            <span>{devices.filter(d => d.band === '5GHz').length} em 5GHz</span>
+            <span>{onlineDevices.filter(d => d.band === '5GHz').length} em 5G</span>
           </div>
         </div>
 
@@ -232,11 +246,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="lg:col-span-2 p-5 rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
-                Dispositivos Conectados na Rede LAN
+              <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                <span>Dispositivos na Rede</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold border border-emerald-500/20">
+                  {onlineDevices.length} Online
+                </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Top aparelhos consumindo tráfego no roteador ZTE
+                Top aparelhos ativos e histórico recente no roteador ZTE
               </p>
             </div>
             <button
@@ -249,13 +266,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="divide-y divide-slate-800/60">
-            {devices.slice(0, 7).map((device) => {
+            {sortedPreviewDevices.slice(0, 7).map((device) => {
               const brandBadge = getBrandBadge(device.brand || device.manufacturer);
               return (
                 <div
                   key={device.id}
                   onClick={() => setSelectedDevice(device)}
-                  className="py-3 px-2 rounded-2xl hover:bg-slate-900/60 transition cursor-pointer flex items-center justify-between gap-4 group"
+                  className={`py-3 px-2 rounded-2xl hover:bg-slate-900/60 transition cursor-pointer flex items-center justify-between gap-4 group ${
+                    device.status === 'offline' ? 'opacity-70 hover:opacity-100' : ''
+                  }`}
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <DeviceIcon
@@ -300,7 +319,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <DeviceStatusBadge status={device.status} />
+                      <div className="text-right flex flex-col items-end">
+                        <DeviceStatusBadge status={device.status} />
+                        <span className="text-[10px] text-slate-500 font-mono mt-0.5">0 Kbps</span>
+                      </div>
                     )}
 
                     <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300 transition" />

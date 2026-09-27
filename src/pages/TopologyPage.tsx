@@ -127,7 +127,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                 </div>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                {ethernetDevices.length} nós
+                {ethernetDevices.filter(d => d.status === 'online').length} on • {ethernetDevices.length} nós
               </span>
             </div>
 
@@ -139,7 +139,11 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                 <div
                   key={dev.id}
                   onClick={() => setSelectedDevice(dev)}
-                  className="p-2.5 rounded-xl bg-slate-950/70 hover:bg-slate-900 border border-slate-800/80 hover:border-cyan-500/40 transition cursor-pointer flex items-center justify-between"
+                  className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                    dev.status === 'offline'
+                      ? 'bg-slate-950/40 border-slate-900 opacity-60 hover:opacity-100 hover:bg-slate-900/50'
+                      : 'bg-slate-950/70 hover:bg-slate-900 border-slate-800/80 hover:border-cyan-500/40'
+                  }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <DeviceIcon category={dev.category} band={dev.band} status={dev.status} size="sm" />
@@ -147,7 +151,10 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                       <div className="text-xs font-semibold text-white truncate">
                         {dev.customName || dev.originalHostname}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-mono truncate">{dev.ip}</div>
+                      <div className="text-[10px] text-slate-400 font-mono truncate flex items-center gap-1.5">
+                        <span>{dev.ip}</span>
+                        {dev.status === 'offline' && <span className="text-slate-500 font-sans">• Offline</span>}
+                      </div>
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
@@ -169,7 +176,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                 </div>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                {wifi5GDevices.length} nós
+                {wifi5GDevices.filter(d => d.status === 'online').length} on • {wifi5GDevices.length} nós
               </span>
             </div>
 
@@ -181,7 +188,11 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                 <div
                   key={dev.id}
                   onClick={() => setSelectedDevice(dev)}
-                  className="p-2.5 rounded-xl bg-slate-950/70 hover:bg-slate-900 border border-slate-800/80 hover:border-brand-500/40 transition cursor-pointer flex items-center justify-between"
+                  className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                    dev.status === 'offline'
+                      ? 'bg-slate-950/40 border-slate-900 opacity-60 hover:opacity-100 hover:bg-slate-900/50'
+                      : 'bg-slate-950/70 hover:bg-slate-900 border-slate-800/80 hover:border-brand-500/40'
+                  }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <DeviceIcon category={dev.category} band={dev.band} status={dev.status} size="sm" />
@@ -189,7 +200,10 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                       <div className="text-xs font-semibold text-white truncate">
                         {dev.customName || dev.originalHostname}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-mono truncate">{dev.ip}</div>
+                      <div className="text-[10px] text-slate-400 font-mono truncate flex items-center gap-1.5">
+                        <span>{dev.ip}</span>
+                        {dev.status === 'offline' && <span className="text-slate-500 font-sans">• Offline</span>}
+                      </div>
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
@@ -211,7 +225,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                 </div>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                {wifi24GDevices.length} nós
+                {wifi24GDevices.filter(d => d.status === 'online').length} on • {wifi24GDevices.length} nós
               </span>
             </div>
 
@@ -223,7 +237,11 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                 <div
                   key={dev.id}
                   onClick={() => setSelectedDevice(dev)}
-                  className="p-2.5 rounded-xl bg-slate-950/70 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 transition cursor-pointer flex items-center justify-between"
+                  className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                    dev.status === 'offline'
+                      ? 'bg-slate-950/40 border-slate-900 opacity-60 hover:opacity-100 hover:bg-slate-900/50'
+                      : 'bg-slate-950/70 hover:bg-slate-900 border-slate-800/80 hover:border-amber-500/40'
+                  }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <DeviceIcon category={dev.category} band={dev.band} status={dev.status} size="sm" />
@@ -231,7 +249,10 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                       <div className="text-xs font-semibold text-white truncate">
                         {dev.customName || dev.originalHostname}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-mono truncate">{dev.ip}</div>
+                      <div className="text-[10px] text-slate-400 font-mono truncate flex items-center gap-1.5">
+                        <span>{dev.ip}</span>
+                        {dev.status === 'offline' && <span className="text-slate-500 font-sans">• Offline</span>}
+                      </div>
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
