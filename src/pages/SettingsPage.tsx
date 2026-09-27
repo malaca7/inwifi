@@ -159,7 +159,7 @@ export const SettingsPage: React.FC = () => {
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
               <span className="text-slate-500 block text-[11px]">Adaptador em Execução</span>
               <span className="text-cyan-400 font-mono font-bold mt-1 block uppercase">
-                {adapter.protocol} {adapter.isDemoMode ? '(Demo)' : ''}
+                {adapter.protocol}
               </span>
             </div>
           </div>

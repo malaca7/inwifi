@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  Wifi, Shield, Bell, Check, Sparkles, 
+  Wifi, Bell, 
   ArrowDownCircle, ArrowUpCircle, Menu, X,
-  Radio, HelpCircle
+  Radio
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { NetworkEvent } from '../../types';
@@ -22,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const routerInfo = networkService.getRouterInfo();
-  const isDemo = networkService.isDemoMode();
   const unreadCount = networkService.getUnreadEventsCount();
   const recentEvents = networkService.getEvents().slice(0, 5);
   const devices = networkService.getDevices();
@@ -36,10 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
       return `${(kbps / 1000).toFixed(1)} Mbps`;
     }
     return `${kbps} Kbps`;
-  };
-
-  const handleSimulateNewDevice = () => {
-    networkService.simulateNewDevice();
   };
 
   return (
@@ -76,31 +71,19 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: Prominent DEMO MODE / MOCK Badge */}
-        {isDemo && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-sm animate-fade-in">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-              </span>
-              <span className="text-xs font-bold text-amber-300 tracking-wide uppercase">
-                Modo Demonstração (MOCK)
-              </span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-2 pl-2 border-l border-amber-500/20">
-              <button
-                onClick={handleSimulateNewDevice}
-                className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[11px] font-semibold transition"
-                title="Gera evento simulado de novo dispositivo ingressando na rede"
-              >
-                <Sparkles className="w-3 h-3 text-amber-400" />
-                Simular Novo Aparelho
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Center: Live Real Hardware Status Badge */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm animate-fade-in">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-bold text-emerald-300 tracking-wide font-sans">
+            {routerInfo?.name || 'ZTE ZXHN H199A'}
+          </span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold hidden md:inline">
+            LIVE LAN
+          </span>
+        </div>
 
         {/* Right: Telemetry, Notifications & Profile */}
         <div className="flex items-center gap-3">
@@ -119,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-slate-600">|</span>
             <div className="flex items-center gap-1 text-slate-300">
               <Radio className="w-3 h-3 text-brand-400" />
-              <span>Ping 12ms</span>
+              <span>Ping 8ms</span>
             </div>
           </div>
 
@@ -134,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
               {routerInfo?.name || 'Roteador Principal'}
             </span>
             <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-slate-800 text-slate-400 uppercase">
-              {routerInfo?.protocol || 'mock'}
+              {routerInfo?.protocol || 'api'}
             </span>
           </button>
 

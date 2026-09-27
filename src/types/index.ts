@@ -44,7 +44,7 @@ export interface RouterCapabilities {
   guestNetwork: boolean;
 }
 
-export type RouterProtocol = 'mock' | 'api' | 'snmp' | 'ssh';
+export type RouterProtocol = 'api' | 'snmp' | 'ssh';
 
 export interface RouterInfo {
   id: string;

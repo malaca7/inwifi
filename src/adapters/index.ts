@@ -1,10 +1,10 @@
 import { RouterAdapter } from './RouterAdapter';
-import { MockRouterAdapter } from './MockRouterAdapter';
+import { RealRouterAdapter } from './RealRouterAdapter';
 import { SnmpRouterAdapter, SnmpConfig } from './SnmpRouterAdapter';
 import { ApiRouterAdapter, ApiRouterConfig } from './ApiRouterAdapter';
 
 export * from './RouterAdapter';
-export * from './MockRouterAdapter';
+export * from './RealRouterAdapter';
 export * from './SnmpRouterAdapter';
 export * from './ApiRouterAdapter';
 
@@ -14,19 +14,19 @@ class AdapterService {
   private listeners: Array<(adapter: RouterAdapter) => void> = [];
 
   constructor() {
-    // Adapter padrão inicial: MockRouterAdapter (Modo Demo)
-    const mock = new MockRouterAdapter();
-    this.currentAdapter = mock;
-    this.registeredAdapters.set(mock.id, mock);
+    // Adaptador de Produção: Roteador Real ZTE ZXHN H199A (192.168.1.1)
+    const realRouter = new RealRouterAdapter();
+    this.currentAdapter = realRouter;
+    this.registeredAdapters.set(realRouter.id, realRouter);
 
-    // Pré-registra exemplo de SNMP para demonstração de troca de capacidades
-    const snmpDemo = new SnmpRouterAdapter({
+    // Conector SNMP opcional para roteadores e switches adicionais
+    const snmpAdapter = new SnmpRouterAdapter({
       host: '192.168.1.254',
       port: 161,
       version: '2c',
       community: 'public'
     });
-    this.registeredAdapters.set('snmp-generic-adapter', snmpDemo);
+    this.registeredAdapters.set('snmp-generic-adapter', snmpAdapter);
   }
 
   getActiveAdapter(): RouterAdapter {

@@ -3,7 +3,7 @@ import { Device, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint } fr
 export interface RouterAdapter {
   readonly id: string;
   readonly name: string;
-  readonly protocol: 'mock' | 'api' | 'snmp' | 'ssh';
+  readonly protocol: 'api' | 'snmp' | 'ssh';
   readonly isDemoMode: boolean;
 
   /** Conectar ao roteador e verificar credenciais/comunicação */

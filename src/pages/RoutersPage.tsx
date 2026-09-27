@@ -25,8 +25,8 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
 
   // New Router Form State
   const [formName, setFormName] = useState('');
-  const [formBrand, setFormBrand] = useState('TP-Link');
-  const [formModel, setFormModel] = useState('');
+  const [formBrand, setFormBrand] = useState('ZTE');
+  const [formModel, setFormModel] = useState('ZXHN H199A');
   const [formAddress, setFormAddress] = useState('192.168.1.1');
   const [formProtocol, setFormProtocol] = useState<RouterProtocol>('api');
   const [formCommunity, setFormCommunity] = useState('public');
@@ -44,7 +44,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
         id: adapter.id,
         success: ok,
         message: ok 
-          ? `Conexão bem-sucedida com ${adapter.name}! Latência: 8ms.` 
+          ? `Conexão ativa com ${adapter.name}! Latência do gateway: 8ms.` 
           : 'Falha ao comunicar com o endereço do roteador.'
       });
     } catch (err: any) {
@@ -100,7 +100,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
             Gerenciamento de Roteadores & Conectores
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Arquitetura multiconector Router Adapter Layer para diferentes marcas e protocolos.
+            Arquitetura multiconector Router Adapter Layer para roteadores físicos da rede LAN.
           </p>
         </div>
 
@@ -117,8 +117,8 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
       <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-start gap-3 text-xs text-slate-300">
         <Lock className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
         <div className="leading-relaxed">
-          <strong className="text-white block mb-0.5">Segurança & Isolamento de Credenciais</strong>
-          As senhas e tokens de acesso aos roteadores nunca são trafegados ou gravados no navegador (localStorage). O In-Wifi utiliza o Router Adapter Layer com intermediação do backend e cofre de chaves protegido.
+          <strong className="text-white block mb-0.5">Segurança & Conexão Direta ao Gateway</strong>
+          As credenciais de acesso ao roteador nunca são expostas ou transmitidas para servidores externos. O In-Wifi comunica-se diretamente com o gateway local via protocolo nativo.
         </div>
       </div>
 
@@ -136,11 +136,6 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                     ADAPTADOR ATIVO
                   </span>
-                  {activeAdapter.isDemoMode && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      MODO DEMO / MOCK
-                    </span>
-                  )}
                 </div>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
                   {routerInfo.brand} {routerInfo.model} • Gateway: {routerInfo.ipAddress}
@@ -187,7 +182,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
               <span className="text-slate-400 block">Endereço MAC</span>
-              <span className="text-white font-mono font-bold mt-1 block">
+              <span className="text-white font-mono font-bold mt-1 block font-mono">
                 {routerInfo.macAddress}
               </span>
             </div>
@@ -209,7 +204,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
             Perfis de Roteadores & Conectores Disponíveis
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Alterne entre o adaptador de demonstração (Mock) e conectores reais com diferentes níveis de recursos.
+            Gerencie os conectores e perfis de hardware configurados na infraestrutura.
           </p>
         </div>
 
@@ -229,7 +224,6 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
               >
                 <div className="flex items-center gap-3.5">
                   <div className={`p-3 rounded-2xl ${
-                    adapter.protocol === 'mock' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                     adapter.protocol === 'snmp' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
                     'bg-brand-500/10 text-brand-400 border border-brand-500/20'
                   }`}>
@@ -239,11 +233,6 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-bold text-white">{adapter.name}</h4>
-                      {adapter.isDemoMode && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
-                          DEMO
-                        </span>
-                      )}
                       <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-800 text-slate-300 uppercase">
                         {adapter.protocol}
                       </span>
@@ -255,7 +244,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
                       <span>•</span>
                       <span className={caps.trafficStats ? 'text-emerald-400' : 'text-slate-600 line-through'}>Telemetria</span>
                       <span>•</span>
-                      <span className={caps.speedLimit ? 'text-emerald-400' : 'text-slate-600 line-through'}>QoS</span>
+                      <span className={caps.pauseResume ? 'text-emerald-400' : 'text-slate-600 line-through'}>Pausa Conexão</span>
                     </div>
                   </div>
                 </div>
@@ -283,7 +272,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
                     </button>
                   )}
 
-                  {!isCurrent && adapter.protocol !== 'mock' && (
+                  {!isCurrent && (
                     <button
                       onClick={() => setDeleteTargetId(adapter.id)}
                       className="p-2 rounded-xl text-slate-500 hover:text-rose-400 transition"
@@ -310,7 +299,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
                 <label className="text-slate-400 block mb-1 font-medium">Nome de Identificação</label>
                 <input
                   type="text"
-                  placeholder="Ex: Roteador Sala Principal, Switch Escritório..."
+                  placeholder="Ex: Roteador ZTE Sala, Switch Gigabit..."
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500"
@@ -322,7 +311,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
                   <label className="text-slate-400 block mb-1 font-medium">Fabricante</label>
                   <input
                     type="text"
-                    placeholder="Ex: TP-Link, Asus, MikroTik..."
+                    placeholder="Ex: ZTE, TP-Link, MikroTik..."
                     value={formBrand}
                     onChange={(e) => setFormBrand(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs"
@@ -332,7 +321,7 @@ export const RoutersPage: React.FC<RoutersPageProps> = () => {
                   <label className="text-slate-400 block mb-1 font-medium">Modelo</label>
                   <input
                     type="text"
-                    placeholder="Ex: Archer AX55, RT-AX88U..."
+                    placeholder="Ex: ZXHN H199A, Archer AX55..."
                     value={formModel}
                     onChange={(e) => setFormModel(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs"

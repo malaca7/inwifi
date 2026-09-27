@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Wifi, Users, ShieldAlert, 
-  ArrowDownCircle, ArrowUpCircle, Radio, Clock, 
-  Sparkles, ChevronRight, Activity, Cpu, HardDrive
+  ArrowDownCircle, Activity, Cpu, HardDrive, Radio, Clock, ChevronRight
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
 import { Device, RouterCapabilities, TrafficPoint } from '../types';
@@ -30,11 +29,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const devices = networkService.getDevices();
   const events = networkService.getEvents();
   const routerInfo = networkService.getRouterInfo();
-  const isDemo = networkService.isDemoMode();
 
   // Metrics
   const onlineDevices = devices.filter(d => d.status === 'online');
-  const offlineDevices = devices.filter(d => d.status === 'offline');
   const blockedDevices = devices.filter(d => d.status === 'blocked');
   const pausedDevices = devices.filter(d => d.status === 'paused');
   
@@ -73,21 +70,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Centro de controle em tempo real • Roteador <strong className="text-slate-200">{routerInfo?.name || 'Principal'}</strong> ({routerInfo?.ipAddress || '192.168.1.1'})
+            Centro de controle em tempo real • Roteador <strong className="text-slate-200">{routerInfo?.name || 'ZTE ZXHN H199A'}</strong> ({routerInfo?.ipAddress || '192.168.1.1'})
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start md:self-auto">
-          {isDemo && (
-            <button
-              onClick={() => networkService.simulateNewDevice()}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold transition"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Simular Aparelho</span>
-            </button>
-          )}
-
           <button
             onClick={() => networkService.refreshData()}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-glow-sm"
@@ -190,7 +177,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-2 font-mono">
             <span className="text-cyan-400 font-bold">{formatSpeed(totalUlKbps)} UL</span>
             <span>•</span>
-            <span className="text-slate-400">Fibra 600 Mbps</span>
+            <span className="text-slate-400">Fibra Óptica</span>
           </div>
         </div>
 
@@ -243,10 +230,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-white tracking-tight">
-                Dispositivos Conectados Recentemente
+                Dispositivos Conectados na Rede LAN
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Top aparelhos consumindo tráfego na rede local
+                Top aparelhos consumindo tráfego no roteador ZTE
               </p>
             </div>
             <button
@@ -259,7 +246,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="divide-y divide-slate-800/60">
-            {devices.slice(0, 6).map((device) => (
+            {devices.slice(0, 7).map((device) => (
               <div
                 key={device.id}
                 onClick={() => setSelectedDevice(device)}
@@ -316,7 +303,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Right 1 Col: Live Event Feed */}
         <div className="p-5 rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-white tracking-tight">Eventos Recentes</h3>
+            <h3 className="text-base font-bold text-white tracking-tight">Eventos Operacionais</h3>
             <button
               onClick={onNavigateToAlerts}
               className="text-xs font-semibold text-brand-400 hover:text-brand-300 transition"

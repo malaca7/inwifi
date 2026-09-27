@@ -66,7 +66,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
                 Internet Pública (WAN)
               </div>
               <div className="text-[11px] text-slate-400 font-mono">
-                IP: 177.136.24.89 • Link Fibra 600M
+                Link de Fibra Óptica • Gateway Ativo
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
 
             <div className="hidden sm:block text-right text-xs font-mono">
               <div className="text-emerald-400 font-bold">Status: Online</div>
-              <div className="text-slate-500">Wi-Fi 6 AX3000</div>
+              <div className="text-slate-500">{routerInfo?.firmwareVersion || 'ZTE Firmware'}</div>
             </div>
           </div>
 

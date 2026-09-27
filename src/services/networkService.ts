@@ -230,12 +230,9 @@ class NetworkService {
     return res;
   }
 
-  /** Simula chegada de novo aparelho no modo mock */
-  simulateNewDevice() {
-    if (this.currentAdapter instanceof Object && 'simulateNewDevice' in this.currentAdapter) {
-      (this.currentAdapter as { simulateNewDevice: () => void }).simulateNewDevice();
-      this.refreshData();
-    }
+  /** Recarrega telemetria da rede */
+  refreshTelemetry() {
+    this.refreshData();
   }
 
   /** Gera a topologia visual da rede */
@@ -244,45 +241,22 @@ class NetworkService {
       {
         id: 'node_internet',
         label: 'Internet Pública (WAN)',
-        sublabel: 'IP: 177.136.24.89 (Fibra Óptica 600 Mbps)',
+        sublabel: 'Gateway WAN • Link de Fibra Ativo',
         type: 'internet',
         status: 'online'
       },
       {
         id: 'node_router',
-        label: this.routerInfo?.name || 'Roteador Principal',
-        sublabel: `${this.routerInfo?.ipAddress || '192.168.1.1'} (Wi-Fi 6)`,
+        label: this.routerInfo?.name || 'Roteador Principal ZTE',
+        sublabel: `${this.routerInfo?.ipAddress || '192.168.1.1'} (${this.routerInfo?.brand || 'ZTE'} ${this.routerInfo?.model || 'ZXHN H199A'})`,
         type: 'router',
         status: this.routerInfo?.isOnline ? 'online' : 'offline',
         connectedToId: 'node_internet'
-      },
-      {
-        id: 'node_switch',
-        label: 'Switch Gigabit Sala',
-        sublabel: 'Portas 1-8 (1000 Mbps)',
-        type: 'switch',
-        status: 'online',
-        connectedToId: 'node_router'
-      },
-      {
-        id: 'node_mesh_ap',
-        label: 'Ponto de Acesso Mesh (Quartos)',
-        sublabel: '192.168.1.200 (Wi-Fi 5GHz/2.4GHz)',
-        type: 'ap',
-        status: 'online',
-        connectedToId: 'node_router'
       }
     ];
 
-    // Conecta dispositivos ao switch ou ao roteador/AP
+    // Conecta dispositivos reais diretamente ao roteador/gateway
     this.devices.forEach(dev => {
-      let connectedTo = 'node_router';
-      if (dev.band === 'ethernet') {
-        connectedTo = 'node_switch';
-      } else if (dev.category === 'computer' || dev.category === 'iot') {
-        connectedTo = 'node_mesh_ap';
-      }
-
       nodes.push({
         id: dev.id,
         label: dev.customName || dev.originalHostname,
@@ -292,7 +266,7 @@ class NetworkService {
         ip: dev.ip,
         mac: dev.mac,
         status: dev.status === 'online' ? 'online' : dev.status === 'blocked' ? 'warning' : 'offline',
-        connectedToId: connectedTo,
+        connectedToId: 'node_router',
         signalStrength: dev.signalStrength,
         band: dev.band
       });

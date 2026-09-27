@@ -16,33 +16,7 @@ class ScheduleService {
       if (stored) {
         this.schedules = JSON.parse(stored);
       } else {
-        // Initial realistic schedule example
-        this.schedules = [
-          {
-            id: 'sch_kids_tablet',
-            deviceId: 'dev_50_bc_96_aa_20_41', // iPad Air
-            deviceName: 'iPad Air Estudos (Mariana)',
-            name: 'Horário de Sono e Estudos',
-            days: [1, 2, 3, 4, 5], // Seg a Sex
-            startTime: '22:00',
-            endTime: '07:00',
-            action: 'block',
-            isActive: true,
-            createdDate: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
-          },
-          {
-            id: 'sch_ps5_weekend',
-            deviceId: 'dev_70_9e_29_bb_cc_01', // PS5
-            deviceName: 'PlayStation 5 Sala',
-            name: 'Limite Noturno Madrugada',
-            days: [0, 6], // Fim de semana
-            startTime: '01:00',
-            endTime: '08:00',
-            action: 'pause',
-            isActive: false,
-            createdDate: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString()
-          }
-        ];
+        this.schedules = [];
         this.save();
       }
     } catch {

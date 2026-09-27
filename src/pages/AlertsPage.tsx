@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Bell, CheckCircle2, AlertTriangle, ShieldAlert, 
-  Info, Sparkles, Volume2, VolumeX, Eye, 
+  Info, Volume2, VolumeX, Eye, 
   Send, Smartphone
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
@@ -58,14 +58,6 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ capabilities }) => {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => networkService.simulateNewDevice()}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold transition"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Simular Evento</span>
-          </button>
-
           <button
             onClick={() => networkService.markAllEventsAsRead()}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-medium transition"
