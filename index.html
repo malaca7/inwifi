@@ -78,10 +78,32 @@
         />
         <div class="loader-status">
           <div class="loader-dot"></div>
-          <span>Carregando Central In-Wifi...</span>
+          <span id="loader-text">Carregando Central In-Wifi...</span>
+        </div>
+        <div id="loader-fallback" style="display:none; margin-top: 18px; text-align: center;">
+          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 10px 0;">A inicialização está demorando mais que o esperado.</p>
+          <button onclick="localStorage.clear(); if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}; location.reload(true);" style="padding: 8px 18px; background: #00D2FF; color: #000; border: none; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer;">
+            Limpar Cache & Recarregar
+          </button>
         </div>
       </div>
     </div>
+    <script>
+      setTimeout(function() {
+        var fb = document.getElementById('loader-fallback');
+        if (fb && document.getElementById('initial-loader')) {
+          fb.style.display = 'block';
+        }
+      }, 5000);
+      window.addEventListener('error', function() {
+        var lt = document.getElementById('loader-text');
+        var fb = document.getElementById('loader-fallback');
+        if (lt && fb) {
+          lt.innerText = 'Recuperando inicialização...';
+          fb.style.display = 'block';
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

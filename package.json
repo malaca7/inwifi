@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist -b gh-pages"
+    "deploy": "gh-pages -d dist -b gh-pages --cname inwifi.malaca.com.br --nojekyll --dotfiles"
   },
   "dependencies": {
     "clsx": "^2.1.1",
