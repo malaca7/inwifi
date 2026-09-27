@@ -18,7 +18,7 @@ export const SchedulesPage: React.FC<SchedulesPageProps> = ({ capabilities }) =>
   const [scheduleToDelete, setScheduleToDelete] = useState<AccessSchedule | null>(null);
 
   // Form State for creating schedule
-  const devices = networkService.getDevices();
+  const devices = networkService.getDevices().filter(d => !d.isGateway);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>(devices[0]?.id || '');
   const [ruleName, setRuleName] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Seg-Sex

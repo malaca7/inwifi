@@ -29,10 +29,11 @@ export const AccessControlPage: React.FC<AccessControlPageProps> = ({ capabiliti
     return unsubscribe;
   }, []);
 
-  const blockedDevices = devices.filter(d => d.status === 'blocked');
-  const pausedDevices = devices.filter(d => d.status === 'paused');
-  const allowedDevices = devices.filter(d => d.status === 'online' || d.status === 'offline');
-  const unknownDevices = devices.filter(d => d.category === 'unknown');
+  const clientDevices = devices.filter(d => !d.isGateway);
+  const blockedDevices = clientDevices.filter(d => d.status === 'blocked');
+  const pausedDevices = clientDevices.filter(d => d.status === 'paused');
+  const allowedDevices = clientDevices.filter(d => d.status === 'online' || d.status === 'offline');
+  const unknownDevices = clientDevices.filter(d => d.category === 'unknown');
 
   const handleUnblock = async (device: Device) => {
     await networkService.unblockDevice(device.id);

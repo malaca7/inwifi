@@ -39,9 +39,9 @@ export const Header: React.FC<HeaderProps> = ({
     return unsubscribe;
   }, []);
 
-  // Aggregate current live speeds
-  const totalDlKbps = devices.reduce((sum, d) => sum + (d.status === 'online' ? d.currentDownloadSpeedKbps : 0), 0);
-  const totalUlKbps = devices.reduce((sum, d) => sum + (d.status === 'online' ? d.currentUploadSpeedKbps : 0), 0);
+  // Aggregate current live speeds (somente clientes online)
+  const totalDlKbps = devices.reduce((sum, d) => sum + (d.status === 'online' && !d.isGateway ? d.currentDownloadSpeedKbps : 0), 0);
+  const totalUlKbps = devices.reduce((sum, d) => sum + (d.status === 'online' && !d.isGateway ? d.currentUploadSpeedKbps : 0), 0);
 
   const formatSpeed = (kbps: number) => {
     if (kbps >= 1000) {

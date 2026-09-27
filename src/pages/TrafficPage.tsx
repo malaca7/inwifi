@@ -48,13 +48,14 @@ export const TrafficPage: React.FC<TrafficPageProps> = ({ capabilities }) => {
     return `${kbps} Kbps`;
   };
 
-  // Calculate totals
-  const totalDownloadBytes = devices.reduce((sum, d) => sum + d.totalDownloadBytes, 0);
-  const totalUploadBytes = devices.reduce((sum, d) => sum + d.totalUploadBytes, 0);
+  // Calculate totals (aparelhos clientes conectados)
+  const clientDevices = devices.filter(d => !d.isGateway);
+  const totalDownloadBytes = clientDevices.reduce((sum, d) => sum + d.totalDownloadBytes, 0);
+  const totalUploadBytes = clientDevices.reduce((sum, d) => sum + d.totalUploadBytes, 0);
   const grandTotalBytes = totalDownloadBytes + totalUploadBytes;
 
   // Sort devices by total consumption
-  const topConsumers = [...devices].sort((a, b) => {
+  const topConsumers = [...clientDevices].sort((a, b) => {
     return (b.totalDownloadBytes + b.totalUploadBytes) - (a.totalDownloadBytes + a.totalUploadBytes);
   });
 

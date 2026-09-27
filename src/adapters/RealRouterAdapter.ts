@@ -286,7 +286,7 @@ export class RealRouterAdapter implements RouterAdapter {
     const mapped: Device[] = rawList.map((item) => {
       const vendorInfo = this.resolveVendor(item.mac);
       const deviceId = `dev_${item.mac.toLowerCase().replace(/:/g, '_')}`;
-      const isGateway = item.ip === currentGwIp || item.ip === '192.168.1.1';
+      const isGateway = item.ip === currentGwIp || item.ip === '192.168.1.1' || item.mac.toUpperCase() === 'C0:94:AD:90:03:23' || Boolean((item as any).isGateway);
       const isHost = item.ip === '192.168.1.11';
 
       if (!this.knownMacs.has(item.mac) && !isGateway && !isHost && this.knownMacs.size > 0) {
@@ -296,7 +296,7 @@ export class RealRouterAdapter implements RouterAdapter {
       }
 
       const defaultName = isGateway
-        ? (savedRouterInfo.name || 'Roteador Gateway ZTE')
+        ? (savedRouterInfo.name || 'Roteador Gateway ZTE ZXHN H199A')
         : isHost
         ? (item.hostname || 'DESKTOP-TK3OMIH')
         : item.hostname || vendorInfo.label;
@@ -324,8 +324,8 @@ export class RealRouterAdapter implements RouterAdapter {
 
       const isActuallyOnline = computedStatus === 'online';
 
-      // Monitoramento reativo de conexão/desconexão
-      if (this.onlineStates.has(deviceId)) {
+      // Monitoramento reativo de conexão/desconexão (exclui o gateway)
+      if (this.onlineStates.has(deviceId) && !isGateway) {
         const wasOnline = this.onlineStates.get(deviceId);
         if (wasOnline && !isActuallyOnline) {
           this.emitEvent({
@@ -361,6 +361,7 @@ export class RealRouterAdapter implements RouterAdapter {
         id: deviceId,
         mac: item.mac,
         ip: item.ip,
+        isGateway: Boolean(isGateway),
         originalHostname: defaultName,
         customName: savedAliases[deviceId] || (isGateway ? (savedRouterInfo.name || 'Roteador Principal ZTE') : null),
         manufacturer: profile.brand || vendorInfo.vendor,
@@ -441,6 +442,7 @@ export class RealRouterAdapter implements RouterAdapter {
   async blockDevice(deviceId: string): Promise<{ success: boolean; error?: string }> {
     const dev = this.cachedDevices.find(d => d.id === deviceId);
     if (!dev) return { success: false, error: 'Dispositivo não encontrado.' };
+    if (dev.isGateway) return { success: false, error: 'O Roteador Gateway Principal não pode ser bloqueado.' };
 
     dev.status = 'blocked';
     dev.currentDownloadSpeedKbps = 0;
@@ -508,6 +510,7 @@ export class RealRouterAdapter implements RouterAdapter {
   async pauseDevice(deviceId: string): Promise<{ success: boolean; error?: string }> {
     const dev = this.cachedDevices.find(d => d.id === deviceId);
     if (!dev) return { success: false, error: 'Dispositivo não encontrado.' };
+    if (dev.isGateway) return { success: false, error: 'A conexão do Roteador Gateway Principal não pode ser pausada.' };
 
     dev.status = 'paused';
     const states = this.loadStorage<Record<string, DeviceStatus>>(STORAGE_KEY_STATES, {});
@@ -662,6 +665,7 @@ export class RealRouterAdapter implements RouterAdapter {
   async kickDevice(deviceId: string): Promise<{ success: boolean; error?: string }> {
     const dev = this.cachedDevices.find(d => d.id === deviceId);
     if (!dev) return { success: false, error: 'Dispositivo não encontrado.' };
+    if (dev.isGateway) return { success: false, error: 'O Roteador Gateway Principal não pode ser desconectado da própria rede.' };
 
     this.kickCounters[deviceId] = (this.kickCounters[deviceId] || 0) + 1;
     dev.kickCount = this.kickCounters[deviceId];

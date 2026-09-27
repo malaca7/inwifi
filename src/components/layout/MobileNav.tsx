@@ -34,10 +34,12 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   const routerInfo = networkService.getRouterInfo();
   const isAdmin = routerInfo?.isAdminAuthenticated;
   const devices = networkService.getDevices();
+  const clientDevices = devices.filter(d => !d.isGateway);
+  const onlineClientsCount = clientDevices.filter(d => d.status === 'online').length;
 
-  // Aggregate current live speeds
-  const totalDlKbps = devices.reduce((sum, d) => sum + (d.status === 'online' ? d.currentDownloadSpeedKbps : 0), 0);
-  const totalUlKbps = devices.reduce((sum, d) => sum + (d.status === 'online' ? d.currentUploadSpeedKbps : 0), 0);
+  // Aggregate current live speeds (somente clientes online)
+  const totalDlKbps = clientDevices.reduce((sum, d) => sum + (d.status === 'online' ? d.currentDownloadSpeedKbps : 0), 0);
+  const totalUlKbps = clientDevices.reduce((sum, d) => sum + (d.status === 'online' ? d.currentUploadSpeedKbps : 0), 0);
 
   const formatSpeed = (kbps: number) => {
     if (kbps >= 1000) {
@@ -49,7 +51,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   // Bottom quick tabs (Native app experience)
   const bottomTabs: Array<{ id: NavTab; label: string; icon: React.ReactNode; badge?: number }> = [
     { id: 'dashboard', label: 'Início', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: 'devices', label: 'Aparelhos', icon: <Laptop2 className="w-5 h-5" />, badge: devices.length },
+    { id: 'devices', label: 'Aparelhos', icon: <Laptop2 className="w-5 h-5" />, badge: onlineClientsCount },
     { id: 'routers', label: 'Roteador', icon: <Router className="w-5 h-5" /> },
     { id: 'alerts', label: 'Alertas', icon: <Bell className="w-5 h-5" />, badge: unreadCount },
   ];
@@ -72,9 +74,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     {
       id: 'devices',
       label: 'Dispositivos',
-      description: `${devices.length} aparelhos conectados na rede LAN`,
+      description: `${onlineClientsCount} online • ${clientDevices.length} aparelhos na rede`,
       icon: <Laptop2 className="w-5 h-5" />,
-      badge: devices.length
+      badge: onlineClientsCount
     },
     {
       id: 'topology',

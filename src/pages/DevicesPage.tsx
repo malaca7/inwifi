@@ -5,7 +5,7 @@ import {
   HardDrive, Smartphone, Laptop, Laptop2, Tv, Cpu, Gamepad2, AlertCircle,
   Zap, Server, Radio, Download, CheckSquare, Square,
   Check, RefreshCw, Sparkles, Tag, Shield, Wifi, Lock, Cable,
-  LayoutGrid, List, Copy
+  LayoutGrid, List, Copy, Router, Sliders
 } from 'lucide-react';
 import { Device, RouterCapabilities, RouterInfo } from '../types';
 import { DeviceIcon, DeviceStatusBadge } from '../components/devices/DeviceIcon';
@@ -19,12 +19,14 @@ interface DevicesPageProps {
   capabilities: RouterCapabilities;
   queryParams?: Record<string, string>;
   onQueryChange?: (params: Record<string, string>) => void;
+  onNavigateToRouters?: () => void;
 }
 
 export const DevicesPage: React.FC<DevicesPageProps> = ({ 
   capabilities,
   queryParams,
-  onQueryChange
+  onQueryChange,
+  onNavigateToRouters
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>(queryParams?.categoria || 'all');
@@ -67,6 +69,15 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   const [devices, setDevices] = useState<Device[]>(() => networkService.getDevices());
   const [routerInfo, setRouterInfo] = useState<RouterInfo | null>(() => networkService.getRouterInfo());
   const isAdmin = routerInfo?.isAdminAuthenticated || false;
+
+  // Derivações de dispositivos clientes (exclui o hardware do próprio roteador para contagem e lista de clientes)
+  const clientDevices = useMemo(() => devices.filter(d => !d.isGateway), [devices]);
+  const gatewayDevice = useMemo(() => devices.find(d => d.isGateway), [devices]);
+  const onlineClientsCount = clientDevices.filter(d => d.status === 'online').length;
+  const offlineClientsCount = clientDevices.filter(d => d.status === 'offline').length;
+  const wlanClientsCount = clientDevices.filter(d => (d.band === '2.4GHz' || d.band === '5GHz') && d.status === 'online').length;
+  const wlanTotalCount = clientDevices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length;
+  const lanTotalCount = clientDevices.filter(d => d.band === 'ethernet').length;
 
   // Real-time synchronization subscription
   useEffect(() => {
@@ -127,8 +138,15 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
     }
   };
 
-  // Filtering
+  // Filtering (lista aparelhos clientes; hardware gateway é exibido em destaque ou com filtro 'gateway')
   const filteredDevices = devices.filter((d) => {
+    if (statusFilter === 'gateway') {
+      return !!d.isGateway;
+    }
+    if (d.isGateway) {
+      return false;
+    }
+
     const search = searchTerm.toLowerCase();
     const matchesSearch = 
       (d.customName && d.customName.toLowerCase().includes(search)) ||
@@ -419,7 +437,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             Central de Gerenciamento de Dispositivos
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Sincronizado com roteador • <strong className="text-emerald-400 font-mono">{devices.filter(d => d.status === 'online').length} online</strong> agora • {devices.length} aparelhos registrados no histórico de rede.
+            Sincronizado com roteador • <strong className="text-emerald-400 font-mono">{onlineClientsCount} online</strong> agora • {clientDevices.length} aparelhos clientes registrados no histórico de rede.
           </p>
         </div>
 
@@ -459,7 +477,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             <span className="text-slate-400 block text-[11px] font-medium">Online no Roteador</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-lg font-bold text-emerald-400 font-mono">
-                {devices.filter(d => d.status === 'online').length}
+                {onlineClientsCount}
               </span>
               <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -485,7 +503,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             <span className="text-slate-400 block text-[11px] font-medium">Offline / Histórico</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-lg font-bold text-slate-300 font-mono">
-                {devices.filter(d => d.status === 'offline').length}
+                {offlineClientsCount}
               </span>
               <span className="text-[10px] text-slate-500 font-medium">Desconectados</span>
             </div>
@@ -508,10 +526,10 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             <span className="text-slate-400 block text-[11px] font-medium">Wi-Fi (WLAN) Ativo</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-lg font-bold text-cyan-400 font-mono">
-                {devices.filter(d => d.status === 'online' && (d.band === '2.4GHz' || d.band === '5GHz')).length}
+                {wlanClientsCount}
               </span>
               <span className="text-[10px] text-slate-400 font-medium">
-                de {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length} cadastrados
+                de {wlanTotalCount} cadastrados
               </span>
             </div>
           </div>
@@ -520,7 +538,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
           </div>
         </div>
 
-        {/* Tile 4: Total Cadastrado */}
+        {/* Tile 4: Total de Clientes */}
         <div 
           onClick={() => handleSetStatusFilter('all')}
           className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
@@ -530,19 +548,71 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
           }`}
         >
           <div>
-            <span className="text-slate-400 block text-[11px] font-medium">Total na Rede</span>
+            <span className="text-slate-400 block text-[11px] font-medium">Total de Clientes</span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-lg font-bold text-white font-mono">
-                {devices.length}
+                {clientDevices.length}
               </span>
               <span className="text-[10px] text-slate-400 font-mono">
-                {devices.filter(d => d.status === 'online').length} on • {devices.filter(d => d.status === 'offline').length} off
+                {onlineClientsCount} on • {offlineClientsCount} off
               </span>
             </div>
           </div>
           <div className="p-2 rounded-xl bg-neutral-800 text-white">
             <Laptop2 className="w-4 h-4" />
           </div>
+        </div>
+      </div>
+
+      {/* Gateway Hardware Card (Central Host da Rede) */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-brand-500/40 transition shadow-card-dark flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="p-3 rounded-2xl bg-brand-500/20 text-cyan-400 border border-brand-500/30 flex-shrink-0">
+            <Router className="w-6 h-6 animate-pulse-subtle" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm sm:text-base font-extrabold text-white truncate">
+                {routerInfo?.name || 'Roteador Gateway ZTE ZXHN H199A'}
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                GATEWAY HOST
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Operacional
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 font-mono mt-1 flex items-center gap-2 flex-wrap">
+              <span className="text-cyan-400 font-bold">IP: {routerInfo?.ipAddress || '192.168.1.1'}</span>
+              <span>•</span>
+              <span>MAC: {routerInfo?.macAddress || 'C0:94:AD:90:03:23'}</span>
+              <span>•</span>
+              <span className="text-slate-400 font-sans">
+                Host físico da LAN (gerencia os {onlineClientsCount} aparelhos clientes)
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0 self-end md:self-center">
+          {gatewayDevice && (
+            <button
+              onClick={() => handleSelectDevice(gatewayDevice)}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition cursor-pointer"
+            >
+              Diagnóstico do Roteador
+            </button>
+          )}
+          {onNavigateToRouters && (
+            <button
+              onClick={onNavigateToRouters}
+              className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <Router className="w-3.5 h-3.5" />
+              <span>Gerenciar Gateway</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -581,16 +651,17 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               onChange={(e) => setStatusFilter(e.target.value)}
               className="flex-1 sm:flex-initial px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs font-medium text-slate-300 focus:outline-none focus:border-brand-500"
             >
-              <option value="all">Status: Todos ({devices.length})</option>
-              <option value="online">🟢 Online no Roteador ({devices.filter(d => d.status === 'online').length})</option>
-              <option value="offline">⚪ Offline / Desconectados ({devices.filter(d => d.status === 'offline').length})</option>
-              <option value="wlan">Wi-Fi (WLAN: {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length})</option>
-              <option value="lan">Cabo de Rede (LAN: {devices.filter(d => d.band === 'ethernet').length})</option>
-              <option value="blocked">Bloqueados ({devices.filter(d => d.status === 'blocked').length})</option>
-              <option value="paused">Pausados ({devices.filter(d => d.status === 'paused').length})</option>
+              <option value="all">Status: Todos os Clientes ({clientDevices.length})</option>
+              <option value="online">🟢 Online no Roteador ({onlineClientsCount})</option>
+              <option value="offline">⚪ Offline / Desconectados ({offlineClientsCount})</option>
+              <option value="wlan">Wi-Fi (WLAN: {wlanTotalCount})</option>
+              <option value="lan">Cabo de Rede (LAN: {lanTotalCount})</option>
+              <option value="blocked">Bloqueados ({clientDevices.filter(d => d.status === 'blocked').length})</option>
+              <option value="paused">Pausados ({clientDevices.filter(d => d.status === 'paused').length})</option>
               <option value="static">IP Estático Reservado</option>
               <option value="priority_high">Prioridade Alta (QoS)</option>
               <option value="random_mac">MAC Privado (Apple/Android)</option>
+              <option value="gateway">🛡️ Hardware Gateway Host (1)</option>
             </select>
 
             <select
@@ -964,33 +1035,42 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                       <span>{pingInfo && !pingInfo.loading && pingInfo.latency !== null ? `${pingInfo.latency}ms` : 'Ping'}</span>
                     </button>
 
-                    {/* Pause / Resume */}
-                    <button
-                      onClick={(e) => handleTogglePause(device, e)}
-                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition flex items-center gap-1 cursor-pointer flex-shrink-0 ${
-                        device.status === 'paused'
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300'
-                      }`}
-                      title={device.status === 'paused' ? 'Retomar Conexão' : 'Pausar Conexão'}
-                    >
-                      {device.status === 'paused' ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-                      <span>{device.status === 'paused' ? 'Retomar' : 'Pausar'}</span>
-                    </button>
+                    {device.isGateway ? (
+                      <span className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold flex items-center gap-1">
+                        <Router className="w-3 h-3" />
+                        <span>Gateway Host</span>
+                      </span>
+                    ) : (
+                      <>
+                        {/* Pause / Resume */}
+                        <button
+                          onClick={(e) => handleTogglePause(device, e)}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition flex items-center gap-1 cursor-pointer flex-shrink-0 ${
+                            device.status === 'paused'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300'
+                          }`}
+                          title={device.status === 'paused' ? 'Retomar Conexão' : 'Pausar Conexão'}
+                        >
+                          {device.status === 'paused' ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                          <span>{device.status === 'paused' ? 'Retomar' : 'Pausar'}</span>
+                        </button>
 
-                    {/* Block / Unblock */}
-                    <button
-                      onClick={(e) => handleToggleBlock(device, e)}
-                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition flex items-center gap-1 cursor-pointer flex-shrink-0 ${
-                        device.status === 'blocked'
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                          : 'bg-neutral-900 hover:bg-rose-950/30 text-rose-400 hover:border-rose-500/40 border-neutral-800'
-                      }`}
-                      title={device.status === 'blocked' ? 'Liberar Dispositivo' : 'Bloquear Dispositivo'}
-                    >
-                      {device.status === 'blocked' ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
-                      <span>{device.status === 'blocked' ? 'Liberar' : 'Bloquear'}</span>
-                    </button>
+                        {/* Block / Unblock */}
+                        <button
+                          onClick={(e) => handleToggleBlock(device, e)}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition flex items-center gap-1 cursor-pointer flex-shrink-0 ${
+                            device.status === 'blocked'
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-neutral-900 hover:bg-rose-950/30 text-rose-400 hover:border-rose-500/40 border-neutral-800'
+                          }`}
+                          title={device.status === 'blocked' ? 'Liberar Dispositivo' : 'Bloquear Dispositivo'}
+                        >
+                          {device.status === 'blocked' ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+                          <span>{device.status === 'blocked' ? 'Liberar' : 'Bloquear'}</span>
+                        </button>
+                      </>
+                    )}
                   </div>
 
                   {/* View Full Details Button */}

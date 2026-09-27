@@ -164,6 +164,10 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   };
 
   const handleKickDevice = async () => {
+    if (device.isGateway) {
+      setActionError('O Roteador Gateway Principal não pode ser desconectado da própria rede.');
+      return;
+    }
     const res = await networkService.kickDevice(device.id);
     if (res.success) {
       showSuccessFeedback(`Quadro de desconexão enviado. ${device.customName || device.originalHostname} forçado a reconectar.`);
@@ -210,6 +214,10 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
 
   const handleToggleBlock = async () => {
     setActionError(null);
+    if (device.isGateway) {
+      setActionError('O Roteador Gateway Principal não pode ser bloqueado.');
+      return;
+    }
     if (device.status === 'blocked') {
       const res = await networkService.unblockDevice(device.id);
       if (!res.success) setActionError(res.error || 'Erro ao desbloquear');
@@ -222,6 +230,10 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
 
   const confirmBlockDevice = async () => {
     setShowConfirmBlock(false);
+    if (device.isGateway) {
+      setActionError('O Roteador Gateway Principal não pode ser bloqueado.');
+      return;
+    }
     const res = await networkService.blockDevice(device.id);
     if (!res.success) setActionError(res.error || 'Erro ao bloquear');
     else showSuccessFeedback('Dispositivo bloqueado no roteador.');
@@ -230,6 +242,10 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
 
   const handleTogglePause = async () => {
     setActionError(null);
+    if (device.isGateway) {
+      setActionError('A conexão do Roteador Gateway Principal não pode ser pausada.');
+      return;
+    }
     if (device.status === 'paused') {
       const res = await networkService.resumeDevice(device.id);
       if (!res.success) setActionError(res.error || 'Erro ao retomar conexão');
@@ -330,6 +346,12 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                 <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-400">
                   <DeviceStatusBadge status={device.status} />
                   
+                  {device.isGateway && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      GATEWAY HOST • ROTEADOR CENTRAL
+                    </span>
+                  )}
+
                   {isRandomMac && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                       MAC PRIVADO (Apple / Android)
@@ -845,11 +867,11 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                     </p>
                     <button
                       onClick={handleKickDevice}
-                      disabled={!capabilities.deviceKick}
+                      disabled={!capabilities.deviceKick || device.isGateway}
                       className="w-full px-3 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600 border border-amber-500/30 text-amber-200 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-40"
                     >
                       <Zap className="w-3.5 h-3.5" />
-                      <span>{capabilities.deviceKick ? 'Expulsar Aparelho do Wi-Fi' : 'Requer Login Admin'}</span>
+                      <span>{device.isGateway ? 'Protegido (Gateway Host)' : capabilities.deviceKick ? 'Expulsar Aparelho do Wi-Fi' : 'Requer Login Admin'}</span>
                     </button>
                   </div>
 
@@ -1079,63 +1101,75 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
             {/* TAB 4: ACCESS CONTROL */}
             {activeTab === 'access' && (
               <div className="space-y-5 animate-fade-in">
-                <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Controle de Conexão Imediato</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Interrompa ou restabeleça o tráfego de dados deste aparelho instantaneamente
+                {device.isGateway ? (
+                  <div className="p-5 rounded-3xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-200 text-xs space-y-2.5">
+                    <div className="flex items-center gap-2 font-bold text-white text-sm">
+                      <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                      <span>Equipamento Gateway Protegido</span>
+                    </div>
+                    <p className="text-slate-300 leading-relaxed text-xs">
+                      Este dispositivo é o <strong>Roteador Gateway Central ZTE ZXHN H199A</strong> que gerencia a rede LAN/Wi-Fi. Ele não pode ser bloqueado ou pausado pelo sistema de controle de acesso de clientes.
                     </p>
                   </div>
+                ) : (
+                  <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Controle de Conexão Imediato</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Interrompa ou restabeleça o tráfego de dados deste aparelho instantaneamente
+                      </p>
+                    </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={handleToggleBlock}
-                      className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition shadow-md ${
-                        device.status === 'blocked'
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
-                          : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
-                      }`}
-                    >
-                      {device.status === 'blocked' ? (
-                        <>
-                          <ShieldCheck className="w-4 h-4" />
-                          <span>Desbloquear Acesso à Internet</span>
-                        </>
-                      ) : (
-                        <>
-                          <ShieldAlert className="w-4 h-4" />
-                          <span>Bloquear Acesso à Internet</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        onClick={handleToggleBlock}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition shadow-md ${
+                          device.status === 'blocked'
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50'
+                            : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/50'
+                        }`}
+                      >
+                        {device.status === 'blocked' ? (
+                          <>
+                            <ShieldCheck className="w-4 h-4" />
+                            <span>Desbloquear Acesso à Internet</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldAlert className="w-4 h-4" />
+                            <span>Bloquear Acesso à Internet</span>
+                          </>
+                        )}
+                      </button>
 
-                    <button
-                      onClick={handleTogglePause}
-                      className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition ${
-                        device.status === 'paused'
-                          ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
-                      }`}
-                    >
-                      {device.status === 'paused' ? (
-                        <>
-                          <Play className="w-4 h-4" />
-                          <span>Retomar Conexão Pausada</span>
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="w-4 h-4" />
-                          <span>Pausar Conexão Temporariamente</span>
-                        </>
-                      )}
-                    </button>
+                      <button
+                        onClick={handleTogglePause}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition ${
+                          device.status === 'paused'
+                            ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                            : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                        }`}
+                      >
+                        {device.status === 'paused' ? (
+                          <>
+                            <Play className="w-4 h-4" />
+                            <span>Retomar Conexão Pausada</span>
+                          </>
+                        ) : (
+                          <>
+                            <Pause className="w-4 h-4" />
+                            <span>Pausar Conexão Temporariamente</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 leading-relaxed">
+                      <strong className="text-slate-300 block mb-0.5">Como funciona o bloqueio:</strong>
+                      O endereço MAC <span className="font-mono text-slate-200">{device.mac}</span> é inserido na lista negra de controle de acesso (Access Control List) do roteador ZTE. O aparelho não conseguirá trocar pacotes com a internet até ser liberado.
+                    </div>
                   </div>
-
-                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 leading-relaxed">
-                    <strong className="text-slate-300 block mb-0.5">Como funciona o bloqueio:</strong>
-                    O endereço MAC <span className="font-mono text-slate-200">{device.mac}</span> é inserido na lista negra de controle de acesso (Access Control List) do roteador ZTE. O aparelho não conseguirá trocar pacotes com a internet até ser liberado.
-                  </div>
-                </div>
+                )}
               </div>
             )}
 

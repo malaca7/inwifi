@@ -25,10 +25,11 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
     return unsubscribe;
   }, []);
 
-  // Group devices by segment
-  const ethernetDevices = devices.filter(d => d.band === 'ethernet');
-  const wifi5GDevices = devices.filter(d => d.band === '5GHz');
-  const wifi24GDevices = devices.filter(d => d.band === '2.4GHz');
+  // Group client devices by segment (exclui o nó do próprio gateway para não duplicar na árvore)
+  const clientDevices = devices.filter(d => !d.isGateway);
+  const ethernetDevices = clientDevices.filter(d => d.band === 'ethernet');
+  const wifi5GDevices = clientDevices.filter(d => d.band === '5GHz');
+  const wifi24GDevices = clientDevices.filter(d => d.band === '2.4GHz');
 
   return (
     <div className="space-y-6 animate-fade-in">

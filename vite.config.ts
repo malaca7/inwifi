@@ -661,11 +661,13 @@ function handleRoutes(middlewares: any) {
         const liveResults = await Promise.all(allKnownDevices.map(d => pingProbe(d.ip)));
 
         const devices = allKnownDevices.map((dev, idx) => {
+          const isGateway = dev.ip === currentGwIp || dev.ip === '192.168.1.1';
           const isOnline = liveResults[idx];
           const is5G = dev.ip === '192.168.1.2' || dev.ip === '192.168.1.6' || dev.ip === '192.168.1.7';
           const isEthernet = dev.ip === currentGwIp || dev.ip === hostIp;
           return {
             ...dev,
+            isGateway,
             isOnline,
             status: isOnline ? 'online' : 'offline',
             ssid: isEthernet ? undefined : (is5G ? wifiSsid5 : wifiSsid24),

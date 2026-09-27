@@ -15,6 +15,7 @@ export interface Device {
   id: string; // Persistent unique ID (usually normalized MAC or UUID)
   mac: string;
   ip: string;
+  isGateway?: boolean; // Define se o dispositivo é o Roteador Gateway Principal (Hardware Host)
   originalHostname: string;
   customName: string | null;
   manufacturer: string;

@@ -101,6 +101,21 @@ class NetworkService {
     return [...this.devices];
   }
 
+  /** Retorna apenas dispositivos clientes conectados (exclui o hardware do próprio roteador/gateway) */
+  getClientDevices(): Device[] {
+    return this.devices.filter(d => !d.isGateway);
+  }
+
+  /** Retorna apenas aparelhos clientes que estão online agora */
+  getOnlineDevices(): Device[] {
+    return this.devices.filter(d => d.status === 'online' && !d.isGateway);
+  }
+
+  /** Retorna as informações do dispositivo Gateway se presente */
+  getGatewayDevice(): Device | undefined {
+    return this.devices.find(d => d.isGateway);
+  }
+
   getDeviceById(id: string): Device | undefined {
     return this.devices.find(d => d.id === id);
   }
@@ -444,8 +459,8 @@ class NetworkService {
       }
     ];
 
-    // Conecta dispositivos reais diretamente ao roteador/gateway
-    this.devices.forEach(dev => {
+    // Conecta apenas dispositivos clientes diretamente ao roteador/gateway (evita nó duplicado do próprio roteador)
+    this.devices.filter(d => !d.isGateway).forEach(dev => {
       nodes.push({
         id: dev.id,
         label: dev.customName || dev.originalHostname,

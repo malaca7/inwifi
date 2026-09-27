@@ -41,20 +41,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return unsubscribe;
   }, []);
 
-  // Metrics
-  const onlineDevices = devices.filter(d => d.status === 'online');
-  const blockedDevices = devices.filter(d => d.status === 'blocked');
-  const pausedDevices = devices.filter(d => d.status === 'paused');
+  // Metrics (exclui o hardware do próprio roteador para contar apenas aparelhos clientes reais)
+  const clientDevices = devices.filter(d => !d.isGateway);
+  const onlineDevices = clientDevices.filter(d => d.status === 'online');
+  const blockedDevices = clientDevices.filter(d => d.status === 'blocked');
+  const pausedDevices = clientDevices.filter(d => d.status === 'paused');
   
   // Sort preview so online devices appear first, followed by highest traffic
-  const sortedPreviewDevices = [...devices].sort((a, b) => {
+  const sortedPreviewDevices = [...clientDevices].sort((a, b) => {
     if (a.status === 'online' && b.status !== 'online') return -1;
     if (a.status !== 'online' && b.status === 'online') return 1;
     return (b.currentDownloadSpeedKbps + b.currentUploadSpeedKbps) - (a.currentDownloadSpeedKbps + a.currentUploadSpeedKbps);
   });
   
   const oneDayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const newDevicesCount = devices.filter(d => d.firstSeen >= oneDayAgo).length;
+  const newDevicesCount = clientDevices.filter(d => d.firstSeen >= oneDayAgo).length;
 
   const totalDlKbps = onlineDevices.reduce((sum, d) => sum + d.currentDownloadSpeedKbps, 0);
   const totalUlKbps = onlineDevices.reduce((sum, d) => sum + d.currentUploadSpeedKbps, 0);
@@ -118,7 +119,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono">
               {onlineDevices.length}
             </span>
-            <span className="text-xs text-slate-400 font-mono">/ {devices.length} no total</span>
+            <span className="text-xs text-slate-400 font-mono">/ {clientDevices.length} clientes</span>
           </div>
           <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between font-medium">
             <span className="text-emerald-400 flex items-center gap-1">
@@ -126,7 +127,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <span>{onlineDevices.length} associados agora</span>
             </span>
             <span className="text-slate-500">
-              {devices.length - onlineDevices.length} offline
+              {clientDevices.length - onlineDevices.length} offline
             </span>
           </div>
         </div>
@@ -147,7 +148,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {onlineDevices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length}
             </span>
             <span className="text-xs text-slate-400 font-mono">
-              / {devices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length} cadastrados
+              / {clientDevices.filter(d => d.band === '2.4GHz' || d.band === '5GHz').length} cadastrados
             </span>
           </div>
           <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
@@ -267,7 +268,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={onNavigateToDevices}
               className="flex items-center gap-1 text-xs font-semibold text-brand-400 hover:text-brand-300 transition"
             >
-              <span>Ver todos ({devices.length})</span>
+              <span>Ver todos ({clientDevices.length})</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

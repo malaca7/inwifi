@@ -87,6 +87,7 @@ export const App: React.FC = () => {
             capabilities={capabilities} 
             queryParams={queryParams}
             onQueryChange={(params) => navigate('devices', undefined, params)}
+            onNavigateToRouters={() => handleSelectTab('routers')}
           />
         );
       case 'topology':
