@@ -7,7 +7,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Info, Activity,
   Search, Cpu, HelpCircle,
   Radio, Zap, Terminal, Sparkles,
-  Power, Server, FileText, CheckCircle2, Cable
+  Power, Server, FileText, CheckCircle2, Cable, Copy
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -19,7 +19,8 @@ import {
   getQuickNamingSuggestions, 
   getIdentificationGuide,
   testDevicePing,
-  PingResult
+  PingResult,
+  getBrandBadge
 } from '../../utils/deviceIdentifier';
 
 interface DeviceDetailsModalProps {
@@ -107,6 +108,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
 
   const vendorInfo = getVendorDetails(device.mac);
   const isRandomMac = isRandomizedMac(device.mac);
+  const brandBadge = getBrandBadge(device.brand || device.manufacturer);
   const quickSuggestions = getQuickNamingSuggestions(device);
   const identGuide = getIdentificationGuide(device);
 
@@ -294,17 +296,34 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-white tracking-tight truncate">
-                      {device.customName || device.originalHostname}
-                    </h2>
-                    <button
-                      onClick={handleStartRename}
-                      className="p-1 text-slate-400 hover:text-brand-400 rounded-lg transition flex-shrink-0"
-                      title="Renomear dispositivo com nome amigável"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl font-bold text-white tracking-tight truncate">
+                        {device.customName || device.model || device.originalHostname}
+                      </h2>
+                      <button
+                        onClick={handleStartRename}
+                        className="p-1 text-slate-400 hover:text-cyan-400 rounded-lg transition flex-shrink-0"
+                        title="Renomear dispositivo com nome amigável"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${brandBadge.bg} ${brandBadge.text} ${brandBadge.border}`}>
+                        {device.brand || brandBadge.name}
+                      </span>
+                      {device.model && (
+                        <span className="text-cyan-300 font-semibold text-xs sm:text-sm">
+                          {device.model}
+                        </span>
+                      )}
+                      {device.customName && (
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          ({device.originalHostname})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -462,7 +481,140 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
             {/* TAB 1: IDENTIFICATION */}
             {activeTab === 'identify' && (
               <div className="space-y-5 animate-fade-in">
-                {/* Manufacturer & Hardware Profile Card */}
+                {/* 1. Complete Commercial Hardware Specs Sheet */}
+                <div className="p-5 rounded-3xl bg-slate-900/80 border border-cyan-500/40 space-y-4 shadow-glow-sm">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>Ficha Técnica do Aparelho</span>
+                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${brandBadge.bg} ${brandBadge.text} ${brandBadge.border}`}>
+                            {device.brand || brandBadge.name}
+                          </span>
+                        </h3>
+                        <p className="text-[11px] text-slate-400">
+                          Identificação de hardware, sistema operacional e parâmetros de rádio Wi-Fi
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-cyan-950/60 text-cyan-300 border border-cyan-700/50">
+                      {device.status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                    {/* Marca Comercial */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Marca do Fabricante</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${brandBadge.bg} ${brandBadge.text} ${brandBadge.border}`}>
+                          {device.brand || brandBadge.name}
+                        </span>
+                        <strong className="text-white text-xs truncate">{device.manufacturer}</strong>
+                      </div>
+                    </div>
+
+                    {/* Modelo do Aparelho */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Modelo Comercial</span>
+                      <strong className="text-cyan-300 text-sm block mt-1 truncate" title={device.model || device.originalHostname}>
+                        {device.model || device.originalHostname}
+                      </strong>
+                    </div>
+
+                    {/* Sistema Operacional */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Sistema Operacional</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Cpu className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                        <strong className="text-white text-xs truncate">{device.os || 'Linux / Android'}</strong>
+                      </div>
+                    </div>
+
+                    {/* Padrão Wi-Fi / Conexão */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Padrão de Rede</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Wifi className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                        <strong className="text-slate-200 text-xs truncate">{device.wifiStandard || (device.band === '5GHz' ? 'Wi-Fi 5 (802.11ac)' : 'Wi-Fi 4')}</strong>
+                      </div>
+                    </div>
+
+                    {/* Rede Wi-Fi (SSID) & Canal */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Rede Wi-Fi Conectada</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <strong className="text-white text-xs truncate">
+                          {device.ssid || (device.band === '5GHz' ? 'Ta Liso Né?!?' : device.band === '2.4GHz' ? 'MALAQUIAS' : 'Cabo LAN')}
+                        </strong>
+                        {device.channel && device.channel !== '-' && (
+                          <span className="px-1.5 py-0.2 rounded bg-neutral-800 text-[10px] text-cyan-400 font-mono">
+                            Ch.{device.channel}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Velocidade de Link */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Velocidade de Link (PHY)</span>
+                      <div className="flex items-center gap-1.5 mt-1 text-emerald-400 font-mono font-bold text-xs">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{device.linkSpeedMbps || (device.band === '5GHz' ? 866 : 144)} Mbps</span>
+                        <span className="text-slate-500 font-sans font-normal text-[10px]">({device.band})</span>
+                      </div>
+                    </div>
+
+                    {/* Sinal e Qualidade */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Nível de Sinal</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <strong className="text-white font-mono text-xs">{device.signalStrength} dBm</strong>
+                        <span className="text-cyan-400 text-[11px] truncate">
+                          • {device.signalQuality || 'Estável'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Endereço IPv4 */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Endereço IPv4</span>
+                      <div className="flex items-center justify-between mt-1">
+                        <strong className="text-cyan-400 font-mono text-xs">{device.ip}</strong>
+                        <button
+                          onClick={() => copyToClipboard(device.ip, 'ip')}
+                          className="text-slate-500 hover:text-white transition"
+                          title="Copiar IPv4"
+                        >
+                          {copiedField === 'ip' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Endereço IPv6 Local */}
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold tracking-wider">Endereço IPv6 Link-Local</span>
+                      <div className="flex items-center justify-between mt-1">
+                        <strong className="text-slate-300 font-mono text-[10px] truncate" title={device.ipv6 || 'fe80::1'}>
+                          {device.ipv6 || 'fe80::1'}
+                        </strong>
+                        <button
+                          onClick={() => copyToClipboard(device.ipv6 || 'fe80::1', 'ipv6')}
+                          className="text-slate-500 hover:text-white transition flex-shrink-0"
+                          title="Copiar IPv6"
+                        >
+                          {copiedField === 'ipv6' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Manufacturer & Hardware Profile Card */}
                 <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                     <div className="flex items-center gap-2.5">

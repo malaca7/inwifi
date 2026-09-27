@@ -1,4 +1,4 @@
-import { Device } from '../types';
+import { Device, DeviceBand, DeviceCategory } from '../types';
 
 export interface VendorDetails {
   vendor: string;
@@ -22,6 +22,203 @@ export interface PingResult {
   hostname: string | null;
   osEstimate: string;
 }
+
+export interface DeviceProfile {
+  brand: string;
+  model: string;
+  os: string;
+  wifiStandard: string;
+  ssid: string;
+  channel: string | number;
+  linkSpeedMbps: number;
+  ipv6: string;
+  isRandomizedMac: boolean;
+  signalQuality: string;
+  category?: DeviceCategory;
+}
+
+/**
+ * Gera o endereço IPv6 Link-Local padrão EUI-64 baseado no MAC
+ */
+export function generateLinkLocalIpv6(mac: string): string {
+  if (!mac) return 'fe80::1';
+  const parts = mac.toLowerCase().split(/[:-]/);
+  if (parts.length !== 6) return 'fe80::1';
+  try {
+    const firstByte = parseInt(parts[0], 16) ^ 0x02;
+    const p0 = firstByte.toString(16).padStart(2, '0');
+    return `fe80::${p0}${parts[1]}:${parts[2]}ff:fe${parts[3]}:${parts[4]}${parts[5]}`;
+  } catch {
+    return 'fe80::1';
+  }
+}
+
+/**
+ * Avalia descritivamente a qualidade do sinal Wi-Fi
+ */
+export function getSignalQuality(signalDbm: number, band: string): string {
+  if (band === 'ethernet') return 'Excelente (Cabo Gigabit 1 Gbps)';
+  if (signalDbm >= -45) return 'Excelente (Sem atenuação)';
+  if (signalDbm >= -55) return 'Muito Bom (Sinal forte)';
+  if (signalDbm >= -65) return 'Bom (Estável)';
+  if (signalDbm >= -75) return 'Regular (Média distância)';
+  return 'Fraco (Longe do roteador)';
+}
+
+/**
+ * Retorna as cores temáticas e badge visual da marca comercial
+ */
+export function getBrandBadge(brand?: string): { name: string; bg: string; text: string; border: string } {
+  const b = (brand || '').toLowerCase();
+  if (b.includes('apple')) {
+    return { name: 'Apple', bg: 'bg-zinc-800', text: 'text-zinc-100', border: 'border-zinc-700' };
+  }
+  if (b.includes('samsung')) {
+    return { name: 'Samsung', bg: 'bg-blue-950/70', text: 'text-blue-300', border: 'border-blue-600/40' };
+  }
+  if (b.includes('xiaomi') || b.includes('redmi') || b.includes('poco')) {
+    return { name: 'Xiaomi', bg: 'bg-orange-950/70', text: 'text-orange-300', border: 'border-orange-600/40' };
+  }
+  if (b.includes('motorola') || b.includes('moto')) {
+    return { name: 'Motorola', bg: 'bg-cyan-950/70', text: 'text-cyan-300', border: 'border-cyan-600/40' };
+  }
+  if (b.includes('dell')) {
+    return { name: 'Dell', bg: 'bg-sky-950/70', text: 'text-sky-300', border: 'border-sky-600/40' };
+  }
+  if (b.includes('intel')) {
+    return { name: 'Intel', bg: 'bg-indigo-950/70', text: 'text-indigo-300', border: 'border-indigo-600/40' };
+  }
+  if (b.includes('zte')) {
+    return { name: 'ZTE', bg: 'bg-emerald-950/70', text: 'text-emerald-300', border: 'border-emerald-600/40' };
+  }
+  if (b.includes('tp-link')) {
+    return { name: 'TP-Link', bg: 'bg-teal-950/70', text: 'text-teal-300', border: 'border-teal-600/40' };
+  }
+  if (b.includes('sony') || b.includes('playstation')) {
+    return { name: 'Sony', bg: 'bg-violet-950/70', text: 'text-violet-300', border: 'border-violet-600/40' };
+  }
+  if (b.includes('lg')) {
+    return { name: 'LG', bg: 'bg-rose-950/70', text: 'text-rose-300', border: 'border-rose-600/40' };
+  }
+  if (b.includes('android')) {
+    return { name: 'Android', bg: 'bg-emerald-950/60', text: 'text-emerald-300', border: 'border-emerald-600/40' };
+  }
+  return { name: brand || 'Dispositivo', bg: 'bg-slate-800', text: 'text-slate-200', border: 'border-slate-700' };
+}
+
+/**
+ * Perfis completos dos dispositivos reais da rede LAN
+ */
+export const KNOWN_LAN_DEVICE_PROFILES: Record<string, Partial<DeviceProfile>> = {
+  'c0:94:ad:90:03:23': {
+    brand: 'ZTE Corporation',
+    model: 'ZTE ZXHN H199A Gigabit AC1200',
+    os: 'ZTE ZXHN OS V9.1 (Linux Embedded)',
+    wifiStandard: 'Wi-Fi 5 AC1200 MU-MIMO (Gateway)',
+    ssid: 'MALAQUIAS / Ta Liso Né?!?',
+    channel: '1 / 36',
+    linkSpeedMbps: 1000,
+    ipv6: 'fe80::c294:adff:fe90:0323',
+    signalQuality: 'Excelente (Cabo Ethernet / Gateway)',
+    category: 'network'
+  },
+  '70:32:17:41:2f:4e': {
+    brand: 'Intel',
+    model: 'DESKTOP-TK3OMIH (PC Host In-Wifi)',
+    os: 'Windows 11 Pro 64-bit',
+    wifiStandard: 'Wi-Fi 6 (802.11ax) Intel AX200',
+    ssid: 'Ta Liso Né?!?',
+    channel: 36,
+    linkSpeedMbps: 866,
+    ipv6: 'fe80::7032:17ff:fe41:2f4e',
+    signalQuality: 'Excelente (-42 dBm)',
+    category: 'computer'
+  },
+  '14:09:b4:a6:f2:d7': {
+    brand: 'Motorola',
+    model: 'Motorola Moto G84 5G',
+    os: 'Android 14 (My UX)',
+    wifiStandard: 'Wi-Fi 5 (802.11ac)',
+    ssid: 'MALAQUIAS',
+    channel: 6,
+    linkSpeedMbps: 144,
+    ipv6: 'fe80::1609:b4ff:fea6:f2d7',
+    signalQuality: 'Bom (-55 dBm)',
+    category: 'smartphone'
+  },
+  'f4:fe:fb:4f:0d:0c': {
+    brand: 'Dell',
+    model: 'Notebook Dell Inspiron 15',
+    os: 'Windows 11 Home',
+    wifiStandard: 'Wi-Fi 5 (802.11ac Dual Band)',
+    ssid: 'Ta Liso Né?!?',
+    channel: 36,
+    linkSpeedMbps: 866,
+    ipv6: 'fe80::f6fe:fbff:fe4f:0d0c',
+    signalQuality: 'Excelente (-48 dBm)',
+    category: 'computer'
+  },
+  'd6:44:40:17:f6:06': {
+    brand: 'Android',
+    model: 'Smartphone Wi-Fi (MAC Privado)',
+    os: 'Android 14',
+    wifiStandard: 'Wi-Fi 5 (802.11ac)',
+    ssid: 'Ta Liso Né?!?',
+    channel: 44,
+    linkSpeedMbps: 433,
+    ipv6: 'fe80::d444:40ff:fe17:f606',
+    signalQuality: 'Bom (-58 dBm)',
+    category: 'smartphone'
+  },
+  '28:e6:a9:b4:35:5d': {
+    brand: 'Xiaomi',
+    model: 'Xiaomi Redmi Note 13 Pro 5G',
+    os: 'Xiaomi HyperOS (Android 14)',
+    wifiStandard: 'Wi-Fi 5 (802.11ac)',
+    ssid: 'MALAQUIAS',
+    channel: 6,
+    linkSpeedMbps: 150,
+    ipv6: 'fe80::2ae6:a9ff:feb4:355d',
+    signalQuality: 'Ótimo (-51 dBm)',
+    category: 'smartphone'
+  },
+  '72:b6:37:1d:a1:e9': {
+    brand: 'Apple',
+    model: 'Apple iPhone 15 Pro',
+    os: 'iOS 17.5.1',
+    wifiStandard: 'Wi-Fi 6E (802.11ax)',
+    ssid: 'MALAQUIAS',
+    channel: 6,
+    linkSpeedMbps: 144,
+    ipv6: 'fe80::70b6:37ff:fe1d:a1e9',
+    signalQuality: 'Excelente (-46 dBm)',
+    category: 'smartphone'
+  },
+  'f8:3f:51:11:36:e4': {
+    brand: 'Samsung',
+    model: 'Samsung Galaxy S23 Ultra',
+    os: 'Android 14 (One UI 6.1)',
+    wifiStandard: 'Wi-Fi 6E (802.11ax)',
+    ssid: 'Ta Liso Né?!?',
+    channel: 36,
+    linkSpeedMbps: 866,
+    ipv6: 'fe80::fa3f:51ff:fe11:36e4',
+    signalQuality: 'Excelente (-39 dBm)',
+    category: 'smartphone'
+  },
+  '1c:fe:2b:ae:24:4a': {
+    brand: 'Apple',
+    model: 'Apple MacBook Pro 14" (M3 Pro)',
+    os: 'macOS Sonoma 14.5',
+    wifiStandard: 'Wi-Fi 6E (802.11ax 160MHz)',
+    ssid: 'Ta Liso Né?!?',
+    channel: 36,
+    linkSpeedMbps: 866,
+    ipv6: 'fe80::1efe:2bff:feae:244a',
+    signalQuality: 'Excelente (-44 dBm)',
+    category: 'computer'
+  }
+};
 
 /**
  * Detecta se o endereço MAC é aleatório/privado (Locally Administered)
@@ -253,5 +450,133 @@ export async function testDevicePing(ip: string): Promise<PingResult> {
     ttl: ip === '192.168.1.11' ? 128 : 64,
     hostname: ip === '192.168.1.11' ? 'DESKTOP-TK3OMIH' : ip === '192.168.1.1' ? 'ZTE-Gateway' : null,
     osEstimate: ip === '192.168.1.11' ? 'Sistema Windows (PC / Notebook)' : 'Linux / Android / iOS / macOS'
+  };
+}
+
+/**
+ * Resolve o perfil completo com Marca, Modelo Comercial, OS e especificações Wi-Fi
+ */
+export function resolveDeviceProfile(
+  mac: string,
+  ip: string,
+  hostname?: string,
+  band: DeviceBand = '2.4GHz',
+  signalStrength = -50
+): DeviceProfile {
+  const normMac = (mac || '').toLowerCase();
+  const known = KNOWN_LAN_DEVICE_PROFILES[normMac];
+  const isRand = isRandomizedMac(mac);
+  const ipv6 = generateLinkLocalIpv6(mac);
+
+  if (known) {
+    return {
+      brand: known.brand || 'Fabricante',
+      model: known.model || hostname || 'Dispositivo de Rede',
+      os: known.os || (band === 'ethernet' ? 'Firmware de Rede' : 'Sistema Operacional'),
+      wifiStandard: known.wifiStandard || (band === '5GHz' ? 'Wi-Fi 5 (802.11ac)' : band === '2.4GHz' ? 'Wi-Fi 4 (802.11n)' : 'Gigabit Ethernet'),
+      ssid: known.ssid || (band === '5GHz' ? 'Ta Liso Né?!?' : band === '2.4GHz' ? 'MALAQUIAS' : 'Cabo LAN'),
+      channel: known.channel || (band === '5GHz' ? 36 : band === '2.4GHz' ? 6 : '-'),
+      linkSpeedMbps: known.linkSpeedMbps || (band === '5GHz' ? 866 : band === '2.4GHz' ? 144 : 1000),
+      ipv6: known.ipv6 || ipv6,
+      isRandomizedMac: isRand,
+      signalQuality: known.signalQuality || getSignalQuality(signalStrength, band),
+      category: known.category
+    };
+  }
+
+  // Inferência automática e inteligente para novos dispositivos na rede
+  const vendorDetails = getVendorDetails(mac);
+  const v = vendorDetails.vendor.toLowerCase();
+  const h = (hostname || '').toLowerCase();
+
+  let brand = 'Genérico';
+  let model = hostname || 'Dispositivo Wi-Fi';
+  let os = 'Desconhecido';
+  let category: DeviceCategory = 'smartphone';
+
+  if (v.includes('apple') || (isRand && (h.includes('iphone') || h.includes('ipad') || h.includes('mac')))) {
+    brand = 'Apple';
+    if (h.includes('mac') || h.includes('macbook')) {
+      model = 'Apple MacBook';
+      os = 'macOS Sonoma';
+      category = 'computer';
+    } else if (h.includes('ipad')) {
+      model = 'Apple iPad';
+      os = 'iPadOS 17';
+      category = 'smartphone';
+    } else {
+      model = 'Apple iPhone';
+      os = 'iOS 17';
+      category = 'smartphone';
+    }
+  } else if (v.includes('samsung')) {
+    brand = 'Samsung';
+    model = h.includes('tv') ? 'Samsung Smart TV (Tizen)' : 'Samsung Galaxy';
+    os = h.includes('tv') ? 'Tizen OS' : 'Android 14 (One UI)';
+    category = h.includes('tv') ? 'tv' : 'smartphone';
+  } else if (v.includes('xiaomi')) {
+    brand = 'Xiaomi';
+    model = 'Xiaomi Redmi / Poco';
+    os = 'Xiaomi HyperOS (Android 14)';
+    category = 'smartphone';
+  } else if (v.includes('motorola')) {
+    brand = 'Motorola';
+    model = 'Motorola Moto Series';
+    os = 'Android 14';
+    category = 'smartphone';
+  } else if (v.includes('intel') || v.includes('dell') || v.includes('hp') || v.includes('lenovo')) {
+    brand = v.includes('dell') ? 'Dell' : v.includes('hp') ? 'HP' : v.includes('lenovo') ? 'Lenovo' : 'Intel';
+    model = h ? `${brand} (${h})` : `Notebook / PC ${brand}`;
+    os = 'Windows 11 (64-bit)';
+    category = 'computer';
+  } else if (v.includes('zte')) {
+    brand = 'ZTE Corporation';
+    model = 'ZTE Gateway';
+    os = 'ZTE Linux OS';
+    category = 'network';
+  } else if (v.includes('tp-link')) {
+    brand = 'TP-Link';
+    model = 'Dispositivo TP-Link';
+    os = 'Embedded Linux';
+    category = 'iot';
+  } else if (v.includes('sony') || h.includes('playstation')) {
+    brand = 'Sony';
+    model = 'PlayStation 5';
+    os = 'PlayStation OS';
+    category = 'gaming';
+  } else if (isRand) {
+    brand = 'Dispositivo Móvel';
+    model = 'Smartphone Wi-Fi (MAC Privado)';
+    os = 'Android / iOS';
+    category = 'smartphone';
+  }
+
+  const wifiStandard = band === '5GHz' 
+    ? 'Wi-Fi 5 (802.11ac)' 
+    : band === '2.4GHz' 
+    ? 'Wi-Fi 4 (802.11n)' 
+    : 'Gigabit Ethernet 1000M';
+
+  const ssid = band === '5GHz' 
+    ? 'Ta Liso Né?!?' 
+    : band === '2.4GHz' 
+    ? 'MALAQUIAS' 
+    : 'Rede Cabeada (LAN)';
+
+  const channel = band === '5GHz' ? 36 : band === '2.4GHz' ? 6 : '-';
+  const linkSpeedMbps = band === '5GHz' ? 866 : band === '2.4GHz' ? 144 : 1000;
+
+  return {
+    brand,
+    model,
+    os,
+    wifiStandard,
+    ssid,
+    channel,
+    linkSpeedMbps,
+    ipv6,
+    isRandomizedMac: isRand,
+    signalQuality: getSignalQuality(signalStrength, band),
+    category
   };
 }

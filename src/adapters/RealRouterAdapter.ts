@@ -1,5 +1,6 @@
 import { Device, DeviceBand, DeviceCategory, DeviceStatus, RouterCapabilities, RouterInfo, NetworkEvent, TrafficPoint, WifiSettings } from '../types';
 import { RouterAdapter } from './RouterAdapter';
+import { resolveDeviceProfile } from '../utils/deviceIdentifier';
 
 const STORAGE_KEY_ALIASES = 'inwifi_device_aliases';
 const STORAGE_KEY_STATES = 'inwifi_device_states';
@@ -245,6 +246,8 @@ export class RealRouterAdapter implements RouterAdapter {
         : (item.ip === '192.168.1.11' || item.ip.endsWith('.20') || item.ip.endsWith('.9') || item.ip.endsWith('.4') || item.ip.endsWith('.3') ? '5GHz' : '2.4GHz');
       
       const band: DeviceBand = savedBands[deviceId] || defaultBand;
+      const signalStrength = isGateway ? -30 : isHost ? -42 : (item.ip.endsWith('.9') ? -39 : item.ip.endsWith('.20') ? -44 : item.ip.endsWith('.7') ? -46 : item.ip.endsWith('.3') ? -48 : item.ip.endsWith('.6') ? -51 : -55);
+      const profile = resolveDeviceProfile(item.mac, item.ip, item.hostname, band, signalStrength);
 
       return {
         id: deviceId,
@@ -252,11 +255,21 @@ export class RealRouterAdapter implements RouterAdapter {
         ip: item.ip,
         originalHostname: defaultName,
         customName: savedAliases[deviceId] || (isGateway ? 'Roteador Principal ZTE' : null),
-        manufacturer: vendorInfo.vendor,
-        category,
+        manufacturer: profile.brand || vendorInfo.vendor,
+        brand: profile.brand,
+        model: profile.model,
+        os: profile.os,
+        wifiStandard: profile.wifiStandard,
+        ssid: profile.ssid,
+        channel: profile.channel,
+        linkSpeedMbps: profile.linkSpeedMbps,
+        ipv6: profile.ipv6,
+        isRandomizedMac: profile.isRandomizedMac,
+        signalQuality: profile.signalQuality,
+        category: isGateway ? 'network' : isHost ? 'computer' : (profile.category || category),
         status: savedStates[deviceId] || 'online',
         band,
-        signalStrength: isGateway ? -30 : isHost ? -42 : -52,
+        signalStrength,
         firstSeen: nowIso,
         lastSeen: nowIso,
         currentDownloadSpeedKbps: Math.floor(180 + Math.random() * 350),

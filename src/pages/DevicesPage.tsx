@@ -13,7 +13,7 @@ import { DeviceDetailsModal } from '../components/devices/DeviceDetailsModal';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { networkService } from '../services/networkService';
 import { CapabilityNotice } from '../components/common/CapabilityNotice';
-import { isRandomizedMac, testDevicePing } from '../utils/deviceIdentifier';
+import { isRandomizedMac, testDevicePing, getBrandBadge } from '../utils/deviceIdentifier';
 
 interface DevicesPageProps {
   capabilities: RouterCapabilities;
@@ -125,6 +125,10 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
     const matchesSearch = 
       (d.customName && d.customName.toLowerCase().includes(search)) ||
       d.originalHostname.toLowerCase().includes(search) ||
+      (d.brand && d.brand.toLowerCase().includes(search)) ||
+      (d.model && d.model.toLowerCase().includes(search)) ||
+      (d.os && d.os.toLowerCase().includes(search)) ||
+      (d.ssid && d.ssid.toLowerCase().includes(search)) ||
       d.ip.includes(search) ||
       d.mac.toLowerCase().includes(search) ||
       d.manufacturer.toLowerCase().includes(search) ||
@@ -720,6 +724,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
             const isRandom = isRandomizedMac(device.mac);
             const pingInfo = pingStates[device.id];
             const isCopied = copiedText === device.ip;
+            const brandBadge = getBrandBadge(device.brand || device.manufacturer);
 
             return (
               <div
@@ -729,14 +734,14 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                   isSelected ? 'border-cyan-500 bg-cyan-950/20 shadow-glow-sm' : 'border-neutral-800/80'
                 }`}
               >
-                {/* Card Top: Checkbox, Icon, Name, Hostname, Edit, Status */}
+                {/* Card Top: Checkbox, Icon, Name, Model, Brand Badge, Status */}
                 <div>
                   <div className="flex items-start justify-between gap-2.5 min-w-0">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
                       {/* Selection Checkbox */}
                       <button
                         onClick={(e) => handleToggleSelect(device.id, e)}
-                        className="text-neutral-500 hover:text-white transition flex-shrink-0"
+                        className="text-neutral-500 hover:text-white transition flex-shrink-0 mt-0.5"
                         title={isSelected ? 'Desmarcar' : 'Selecionar'}
                       >
                         {isSelected ? (
@@ -754,11 +759,11 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                         size="md"
                       />
 
-                      {/* Name & Hostname */}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                      {/* Name, Model & Brand */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                           <span className="font-bold text-white group-hover:text-cyan-300 transition text-sm truncate">
-                            {device.customName || device.originalHostname}
+                            {device.customName || device.model || device.originalHostname}
                           </span>
                           <button
                             onClick={(e) => handleOpenRename(device, e)}
@@ -768,16 +773,23 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                             <Edit2 className="w-3 h-3" />
                           </button>
                         </div>
-                        {device.customName && (
-                          <div className="text-[10px] text-neutral-400 font-mono truncate">
-                            ({device.originalHostname})
-                          </div>
-                        )}
-                        {device.ownerName && (
-                          <div className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 inline-block mt-0.5 font-medium truncate max-w-full">
-                            Dono: {device.ownerName}
-                          </div>
-                        )}
+
+                        {/* Model / Subtitle */}
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${brandBadge.bg} ${brandBadge.text} ${brandBadge.border}`}>
+                            {device.brand || brandBadge.name}
+                          </span>
+                          {device.model && (device.customName || device.model !== device.originalHostname) && (
+                            <span className="text-[11px] text-cyan-300 font-medium truncate max-w-[200px]">
+                              {device.model}
+                            </span>
+                          )}
+                          {device.ownerName && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-300 font-medium truncate">
+                              Dono: {device.ownerName}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -799,11 +811,50 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                     </div>
                   </div>
 
-                  {/* 2-Column Info Grid: IP, Band/Signal, MAC, Vendor */}
+                  {/* 4-Box Technical Info Grid */}
                   <div className="mt-3.5 pt-3 border-t border-neutral-900 grid grid-cols-2 gap-2 text-xs">
-                    {/* IP Address */}
+                    {/* Aparelho & Sistema Operacional */}
                     <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
-                      <span className="text-[10px] text-neutral-400 block font-medium">Endereço IP</span>
+                      <span className="text-[10px] text-neutral-400 block font-medium">Aparelho & Sistema</span>
+                      <div className="text-white font-semibold text-[11px] truncate mt-0.5" title={device.model || device.manufacturer}>
+                        {device.model || device.originalHostname}
+                      </div>
+                      <div className="text-[10px] text-cyan-400/90 font-mono mt-0.5 truncate flex items-center gap-1">
+                        <Cpu className="w-2.5 h-2.5 flex-shrink-0 text-cyan-400" />
+                        <span className="truncate">{device.os || 'Linux / Android'}</span>
+                      </div>
+                    </div>
+
+                    {/* Rede Wi-Fi & Velocidade de Link */}
+                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
+                      <span className="text-[10px] text-neutral-400 block font-medium">Rede Wi-Fi & Link</span>
+                      <div className="flex items-center gap-1 mt-0.5 truncate">
+                        {device.band === 'ethernet' ? (
+                          <>
+                            <Cable className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                            <span className="text-neutral-300 font-semibold text-[11px] truncate">Cabo LAN</span>
+                          </>
+                        ) : (
+                          <>
+                            <Wifi className={`w-3 h-3 flex-shrink-0 ${device.band === '5GHz' ? 'text-blue-400' : 'text-cyan-400'}`} />
+                            <span className={`font-semibold text-[11px] truncate ${device.band === '5GHz' ? 'text-blue-300' : 'text-cyan-300'}`}>
+                              {device.ssid || (device.band === '5GHz' ? 'Ta Liso Né?!?' : 'MALAQUIAS')}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-[9px] text-emerald-400 font-mono mt-0.5 truncate flex items-center gap-1">
+                        <Zap className="w-2.5 h-2.5 flex-shrink-0 text-amber-400" />
+                        <span>{device.linkSpeedMbps || (device.band === '5GHz' ? 866 : device.band === '2.4GHz' ? 144 : 1000)} Mbps</span>
+                        {device.channel && device.channel !== '-' && (
+                          <span className="text-neutral-500">• Ch.{device.channel}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Endereço IP & Sinal */}
+                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
+                      <span className="text-[10px] text-neutral-400 block font-medium">Endereço IP & Sinal</span>
                       <div className="flex items-center justify-between gap-1 mt-0.5 min-w-0">
                         <span className="text-cyan-400 font-mono font-semibold truncate text-[11px] sm:text-xs">
                           {device.ip}
@@ -816,54 +867,30 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                           {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                         </button>
                       </div>
-                    </div>
-
-                    {/* Connection Band & Signal */}
-                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
-                      <span className="text-[10px] text-neutral-400 block font-medium">Conexão / Sinal</span>
-                      <div className="flex items-center gap-1.5 mt-0.5 truncate">
-                        {device.band === '5GHz' ? (
-                          <>
-                            <Wifi className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                            <span className="text-blue-300 font-bold text-[11px] truncate">5GHz (SSID5)</span>
-                          </>
-                        ) : device.band === '2.4GHz' ? (
-                          <>
-                            <Wifi className="w-3 h-3 text-cyan-400 flex-shrink-0" />
-                            <span className="text-cyan-300 font-bold text-[11px] truncate">2.4GHz</span>
-                          </>
-                        ) : (
-                          <>
-                            <Cable className="w-3 h-3 text-neutral-400 flex-shrink-0" />
-                            <span className="text-neutral-300 font-medium text-[11px] truncate">Cabo LAN</span>
-                          </>
-                        )}
-                      </div>
                       <div className="text-[9px] text-neutral-400 font-mono mt-0.5 truncate">
-                        {device.band === 'ethernet' ? 'Gigabit 1000M' : `${device.signalStrength} dBm`}
+                        {device.band === 'ethernet' ? '1000M Full-Duplex' : `${device.signalStrength} dBm (${device.signalQuality ? device.signalQuality.split(' ')[0] : 'Bom'})`}
                       </div>
                     </div>
 
-                    {/* MAC Address */}
+                    {/* Endereço MAC & Fabricante */}
                     <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
-                      <span className="text-[10px] text-neutral-400 block font-medium">Endereço MAC</span>
+                      <span className="text-[10px] text-neutral-400 block font-medium">Endereço MAC & OUI</span>
                       <div className="flex items-center justify-between gap-1 mt-0.5 min-w-0">
                         <span className="text-neutral-300 font-mono text-[10px] truncate">
                           {device.mac}
                         </span>
-                        {isRandom && (
-                          <span className="text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold flex-shrink-0">
+                        {isRandom ? (
+                          <span className="text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold flex-shrink-0" title="MAC Privado / Aleatório (Privacidade Ativa)">
                             PRIV
+                          </span>
+                        ) : (
+                          <span className="text-[8px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-mono flex-shrink-0" title="MAC Físico IEEE">
+                            FÍS
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    {/* Vendor */}
-                    <div className="bg-neutral-900/60 rounded-xl p-2.5 border border-neutral-800/60 min-w-0">
-                      <span className="text-[10px] text-neutral-400 block font-medium">Fabricante</span>
-                      <div className="text-white font-medium text-[11px] truncate mt-0.5">
-                        {device.manufacturer}
+                      <div className="text-[10px] text-neutral-400 truncate mt-0.5" title={device.manufacturer}>
+                        {device.brand || device.manufacturer}
                       </div>
                     </div>
                   </div>
@@ -957,9 +984,10 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                       )}
                     </button>
                   </th>
-                  <th className="py-3.5 px-3">Dispositivo & Fabricante</th>
+                  <th className="py-3.5 px-3">Aparelho & Marca</th>
+                  <th className="py-3.5 px-3">Sistema & Padrão</th>
+                  <th className="py-3.5 px-3">Rede Wi-Fi & Link</th>
                   <th className="py-3.5 px-3">Endereço IP & MAC</th>
-                  <th className="py-3.5 px-3">Conexão & Sinal</th>
                   <th className="py-3.5 px-3">Vazão Instantânea</th>
                   <th className="py-3.5 px-3">Status</th>
                   <th className="py-3.5 px-4 text-right">Ações Rápidas</th>
@@ -971,6 +999,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                   const isRandom = isRandomizedMac(device.mac);
                   const pingInfo = pingStates[device.id];
                   const isCopied = copiedText === device.ip;
+                  const brandBadge = getBrandBadge(device.brand || device.manufacturer);
 
                   return (
                     <tr 
@@ -991,7 +1020,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                         </button>
                       </td>
 
-                      {/* Device & Vendor */}
+                      {/* Aparelho & Marca */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <DeviceIcon
@@ -1001,9 +1030,9 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                             size="sm"
                           />
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                               <span className="font-bold text-white group-hover:text-cyan-300 transition text-xs truncate">
-                                {device.customName || device.originalHostname}
+                                {device.customName || device.model || device.originalHostname}
                               </span>
                               <button
                                 onClick={(e) => handleOpenRename(device, e)}
@@ -1013,15 +1042,58 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                                 <Edit2 className="w-3 h-3" />
                               </button>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 truncate">
-                              <span>{device.manufacturer}</span>
-                              {device.customName && <span>• ({device.originalHostname})</span>}
+                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 truncate">
+                              <span className={`px-1 py-0.2 rounded font-bold border ${brandBadge.bg} ${brandBadge.text} ${brandBadge.border}`}>
+                                {device.brand || brandBadge.name}
+                              </span>
+                              <span className="text-cyan-300 font-medium truncate">{device.model || device.manufacturer}</span>
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* IP & MAC */}
+                      {/* Sistema Operacional & Padrão */}
+                      <td className="py-3 px-3">
+                        <div className="font-medium text-slate-200 text-xs truncate flex items-center gap-1">
+                          <Cpu className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                          <span className="truncate">{device.os || 'Linux / Android'}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono truncate">
+                          {device.wifiStandard || (device.band === '5GHz' ? 'Wi-Fi 5 (802.11ac)' : device.band === '2.4GHz' ? 'Wi-Fi 4 (802.11n)' : 'Gigabit LAN')}
+                        </div>
+                      </td>
+
+                      {/* Rede Wi-Fi, Canal & Velocidade de Link */}
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-slate-200 flex items-center gap-1 text-xs">
+                          {device.band === '5GHz' ? (
+                            <>
+                              <Wifi className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                              <span className="text-blue-300 font-bold">{device.ssid || 'Ta Liso Né?!?'}</span>
+                            </>
+                          ) : device.band === '2.4GHz' ? (
+                            <>
+                              <Wifi className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                              <span className="text-cyan-300 font-bold">{device.ssid || 'MALAQUIAS'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Cable className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                              <span>Cabo LAN</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-emerald-400 mt-0.5 font-mono flex items-center gap-1">
+                          <Zap className="w-2.5 h-2.5 text-amber-400" />
+                          <span>{device.linkSpeedMbps || (device.band === '5GHz' ? 866 : 144)} Mbps</span>
+                          {device.channel && device.channel !== '-' && (
+                            <span className="text-slate-500">• Ch.{device.channel}</span>
+                          )}
+                          <span className="text-slate-500 font-sans">• {device.signalStrength} dBm</span>
+                        </div>
+                      </td>
+
+                      {/* Endereço IP & MAC */}
                       <td className="py-3 px-3 font-mono">
                         <div className="flex items-center gap-1">
                           <span className="text-cyan-400 font-semibold">{device.ip}</span>
@@ -1035,36 +1107,15 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                           <span>{device.mac}</span>
-                          {isRandom && (
-                            <span className="text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-bold">
+                          {isRandom ? (
+                            <span className="text-[8px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-bold" title="MAC Privado">
                               PRIV
                             </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Connection Band & Signal */}
-                      <td className="py-3 px-3">
-                        <div className="font-semibold text-slate-200 flex items-center gap-1 text-xs">
-                          {device.band === '5GHz' ? (
-                            <>
-                              <Wifi className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                              <span className="text-blue-300 font-bold">5GHz (SSID5)</span>
-                            </>
-                          ) : device.band === '2.4GHz' ? (
-                            <>
-                              <Wifi className="w-3 h-3 text-cyan-400 flex-shrink-0" />
-                              <span className="text-cyan-300 font-bold">2.4GHz</span>
-                            </>
                           ) : (
-                            <>
-                              <Cable className="w-3 h-3 text-neutral-400 flex-shrink-0" />
-                              <span>Cabo LAN</span>
-                            </>
+                            <span className="text-[8px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-sans font-medium" title="MAC Físico IEEE">
+                              FÍS
+                            </span>
                           )}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                          {device.band === 'ethernet' ? 'Gigabit 1000M' : `${device.signalStrength} dBm`}
                         </div>
                       </td>
 
@@ -1153,6 +1204,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
               const isRandom = isRandomizedMac(device.mac);
               const pingInfo = pingStates[device.id];
               const isCopied = copiedText === device.ip;
+              const brandBadge = getBrandBadge(device.brand || device.manufacturer);
 
               return (
                 <div
@@ -1172,12 +1224,16 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                       />
                       <div className="min-w-0">
                         <span className="font-bold text-white text-sm truncate block">
-                          {device.customName || device.originalHostname}
+                          {device.customName || device.model || device.originalHostname}
                         </span>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-xs font-mono text-cyan-400">
+                        <div className="flex items-center gap-1.5 mt-0.5 text-xs font-mono text-cyan-400 flex-wrap">
+                          <span className={`px-1 py-0.2 rounded text-[9px] font-bold border ${brandBadge.bg} ${brandBadge.text} ${brandBadge.border}`}>
+                            {device.brand || brandBadge.name}
+                          </span>
                           <span>{device.ip}</span>
-                          <span className="text-neutral-600">•</span>
-                          <span className="text-neutral-400 font-sans truncate">{device.manufacturer}</span>
+                          {device.model && (
+                            <span className="text-slate-300 font-sans truncate text-[11px]">• {device.model}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1186,7 +1242,8 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
                       <DeviceStatusBadge status={device.status} />
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-900 text-neutral-300 flex items-center gap-1 border border-neutral-800">
                         {device.band === '5GHz' ? <Wifi className="w-2.5 h-2.5 text-blue-400" /> : device.band === '2.4GHz' ? <Wifi className="w-2.5 h-2.5 text-cyan-400" /> : <Cable className="w-2.5 h-2.5 text-neutral-400" />}
-                        <span>{device.band === '5GHz' ? '5GHz (SSID5)' : device.band === '2.4GHz' ? '2.4GHz' : 'Cabo LAN'}</span>
+                        <span>{device.band === '5GHz' ? '5GHz' : device.band === '2.4GHz' ? '2.4GHz' : 'Cabo'}</span>
+                        <span className="text-emerald-400 font-bold">• {device.linkSpeedMbps || (device.band === '5GHz' ? 866 : 144)}M</span>
                       </span>
                     </div>
                   </div>

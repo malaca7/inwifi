@@ -18,6 +18,16 @@ export interface Device {
   originalHostname: string;
   customName: string | null;
   manufacturer: string;
+  brand?: string; // Marca comercial (ex: Samsung, Apple, Motorola, Xiaomi, Dell, Intel, ZTE)
+  model?: string; // Modelo comercial detalhado (ex: Galaxy S23 Ultra, iPhone 15 Pro, Moto G84 5G)
+  os?: string; // Sistema Operacional (ex: Android 14, iOS 17.5, Windows 11, macOS Sonoma)
+  wifiStandard?: string; // Padrão Wi-Fi (ex: Wi-Fi 6 (802.11ax), Wi-Fi 5 (802.11ac), Gigabit LAN)
+  ssid?: string; // Nome da rede Wi-Fi conectada (ex: Ta Liso Né?!?, MALAQUIAS)
+  channel?: string | number; // Canal Wi-Fi (ex: 36, 6)
+  linkSpeedMbps?: number; // Velocidade de negociação do link (ex: 866 Mbps, 433 Mbps, 1000 Mbps)
+  ipv6?: string; // Endereço IPv6 local
+  isRandomizedMac?: boolean; // MAC Privado ou Físico de Fábrica
+  signalQuality?: string; // Qualidade descritiva (ex: Excelente, Ótimo, Bom, Regular)
   category: DeviceCategory;
   status: DeviceStatus;
   band: DeviceBand;

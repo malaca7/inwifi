@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { 
   Wifi, Users, ShieldAlert, 
-  ArrowDownCircle, Activity, Cpu, HardDrive, Radio, Clock, ChevronRight
+  ArrowDownCircle, Activity, Cpu, HardDrive, Radio, Clock, ChevronRight, Zap
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
 import { Device, RouterCapabilities, TrafficPoint } from '../types';
 import { DeviceIcon, DeviceStatusBadge } from '../components/devices/DeviceIcon';
 import { NetworkActivityChart } from '../components/dashboard/NetworkActivityChart';
 import { DeviceDetailsModal } from '../components/devices/DeviceDetailsModal';
+import { getBrandBadge } from '../utils/deviceIdentifier';
 
 interface DashboardPageProps {
   onNavigateToDevices: () => void;
@@ -248,57 +249,65 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="divide-y divide-slate-800/60">
-            {devices.slice(0, 7).map((device) => (
-              <div
-                key={device.id}
-                onClick={() => setSelectedDevice(device)}
-                className="py-3 px-2 rounded-2xl hover:bg-slate-900/60 transition cursor-pointer flex items-center justify-between gap-4 group"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <DeviceIcon
-                    category={device.category}
-                    band={device.band}
-                    status={device.status}
-                    size="md"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white group-hover:text-brand-300 transition truncate">
-                        {device.customName || device.originalHostname}
-                      </span>
-                      {device.customName && (
-                        <span className="text-[10px] text-slate-400 truncate hidden sm:inline">
-                          ({device.originalHostname})
+            {devices.slice(0, 7).map((device) => {
+              const brandBadge = getBrandBadge(device.brand || device.manufacturer);
+              return (
+                <div
+                  key={device.id}
+                  onClick={() => setSelectedDevice(device)}
+                  className="py-3 px-2 rounded-2xl hover:bg-slate-900/60 transition cursor-pointer flex items-center justify-between gap-4 group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <DeviceIcon
+                      category={device.category}
+                      band={device.band}
+                      status={device.status}
+                      size="md"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-white group-hover:text-cyan-300 transition truncate">
+                          {device.customName || device.model || device.originalHostname}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 font-mono">
-                      <span>{device.ip}</span>
-                      <span>•</span>
-                      <span className="text-slate-400">{device.manufacturer}</span>
+                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${brandBadge.bg} ${brandBadge.text} ${brandBadge.border}`}>
+                          {device.brand || brandBadge.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 font-mono flex-wrap">
+                        <span className="text-cyan-400">{device.ip}</span>
+                        <span>•</span>
+                        <span className="text-slate-300 font-sans truncate">{device.model || device.manufacturer}</span>
+                        {device.ssid && (
+                          <>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="hidden sm:inline text-slate-500 font-sans">{device.ssid}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-4 flex-shrink-0">
-                  {device.status === 'online' ? (
-                    <div className="text-right font-mono text-xs">
-                      <div className="text-emerald-400 font-bold flex items-center justify-end gap-1">
-                        <ArrowDownCircle className="w-3.5 h-3.5" />
-                        <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    {device.status === 'online' ? (
+                      <div className="text-right font-mono text-xs">
+                        <div className="text-emerald-400 font-bold flex items-center justify-end gap-1">
+                          <ArrowDownCircle className="w-3.5 h-3.5" />
+                          <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center justify-end gap-1">
+                          <span>{device.band}</span>
+                          <span className="text-emerald-400">• {device.linkSpeedMbps || (device.band === '5GHz' ? 866 : 144)}M</span>
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-400">
-                        {device.band}
-                      </div>
-                    </div>
-                  ) : (
-                    <DeviceStatusBadge status={device.status} />
-                  )}
+                    ) : (
+                      <DeviceStatusBadge status={device.status} />
+                    )}
 
-                  <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300 transition" />
+                    <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300 transition" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
