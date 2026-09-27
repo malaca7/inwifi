@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Globe, Router, Wifi, Share2, ChevronRight, Cable
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
-import { Device, RouterCapabilities } from '../types';
+import { Device, RouterCapabilities, RouterInfo } from '../types';
 import { DeviceIcon } from '../components/devices/DeviceIcon';
 import { DeviceDetailsModal } from '../components/devices/DeviceDetailsModal';
 
@@ -13,8 +13,17 @@ interface TopologyPageProps {
 
 export const TopologyPage: React.FC<TopologyPageProps> = ({ capabilities }) => {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const devices = networkService.getDevices();
-  const routerInfo = networkService.getRouterInfo();
+  const [devices, setDevices] = useState<Device[]>(() => networkService.getDevices());
+  const [routerInfo, setRouterInfo] = useState<RouterInfo | null>(() => networkService.getRouterInfo());
+
+  // Real-time synchronization subscription
+  useEffect(() => {
+    const unsubscribe = networkService.subscribe(() => {
+      setDevices(networkService.getDevices());
+      setRouterInfo(networkService.getRouterInfo());
+    });
+    return unsubscribe;
+  }, []);
 
   // Group devices by segment
   const ethernetDevices = devices.filter(d => d.band === 'ethernet');

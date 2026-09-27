@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, ShieldCheck, Pause, Play, 
   HelpCircle, CheckCircle, Eye
@@ -19,7 +19,15 @@ export const AccessControlPage: React.FC<AccessControlPageProps> = ({ capabiliti
   const [deviceToBlock, setDeviceToBlock] = useState<Device | null>(null);
   const [activeTab, setActiveTab] = useState<'blocked' | 'paused' | 'allowed' | 'unknown'>('blocked');
 
-  const devices = networkService.getDevices();
+  const [devices, setDevices] = useState<Device[]>(() => networkService.getDevices());
+
+  // Real-time synchronization subscription
+  useEffect(() => {
+    const unsubscribe = networkService.subscribe(() => {
+      setDevices(networkService.getDevices());
+    });
+    return unsubscribe;
+  }, []);
 
   const blockedDevices = devices.filter(d => d.status === 'blocked');
   const pausedDevices = devices.filter(d => d.status === 'paused');

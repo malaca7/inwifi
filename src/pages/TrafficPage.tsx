@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Activity, ArrowDownCircle, ArrowUpCircle, HardDrive, 
   BarChart3
@@ -19,7 +19,15 @@ export const TrafficPage: React.FC<TrafficPageProps> = ({ capabilities }) => {
   const [chartData, setChartData] = useState<TrafficPoint[]>(networkService.getTrafficStats());
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
-  const devices = networkService.getDevices();
+  const [devices, setDevices] = useState<Device[]>(() => networkService.getDevices());
+
+  // Real-time synchronization subscription
+  useEffect(() => {
+    const unsubscribe = networkService.subscribe(() => {
+      setDevices(networkService.getDevices());
+    });
+    return unsubscribe;
+  }, []);
 
   const handlePeriodChange = async (p: 'realtime' | 'day' | 'week' | 'month') => {
     setPeriod(p);

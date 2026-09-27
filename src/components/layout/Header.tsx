@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Wifi, Bell, 
   ArrowDownCircle, ArrowUpCircle, Menu, X,
   Radio, LogOut
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
-import { NetworkEvent } from '../../types';
+import { NetworkEvent, RouterInfo, Device } from '../../types';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -23,10 +23,21 @@ export const Header: React.FC<HeaderProps> = ({
   onDisconnectRouter
 }) => {
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
-  const routerInfo = networkService.getRouterInfo();
-  const unreadCount = networkService.getUnreadEventsCount();
-  const recentEvents = networkService.getEvents().slice(0, 5);
-  const devices = networkService.getDevices();
+  const [routerInfo, setRouterInfo] = useState<RouterInfo | null>(() => networkService.getRouterInfo());
+  const [unreadCount, setUnreadCount] = useState<number>(() => networkService.getUnreadEventsCount());
+  const [recentEvents, setRecentEvents] = useState<NetworkEvent[]>(() => networkService.getEvents().slice(0, 5));
+  const [devices, setDevices] = useState<Device[]>(() => networkService.getDevices());
+
+  // Real-time synchronization subscription
+  useEffect(() => {
+    const unsubscribe = networkService.subscribe(() => {
+      setRouterInfo(networkService.getRouterInfo());
+      setUnreadCount(networkService.getUnreadEventsCount());
+      setRecentEvents(networkService.getEvents().slice(0, 5));
+      setDevices(networkService.getDevices());
+    });
+    return unsubscribe;
+  }, []);
 
   // Aggregate current live speeds
   const totalDlKbps = devices.reduce((sum, d) => sum + (d.status === 'online' ? d.currentDownloadSpeedKbps : 0), 0);

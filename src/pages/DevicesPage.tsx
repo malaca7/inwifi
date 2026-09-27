@@ -7,7 +7,7 @@ import {
   Check, RefreshCw, Sparkles, Tag, Shield, Wifi, Lock, Cable,
   LayoutGrid, List, Copy
 } from 'lucide-react';
-import { Device, RouterCapabilities } from '../types';
+import { Device, RouterCapabilities, RouterInfo } from '../types';
 import { DeviceIcon, DeviceStatusBadge } from '../components/devices/DeviceIcon';
 import { DeviceDetailsModal } from '../components/devices/DeviceDetailsModal';
 import { ConfirmModal } from '../components/common/ConfirmModal';
@@ -64,9 +64,18 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
   const [deviceToBlock, setDeviceToBlock] = useState<Device | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const devices = networkService.getDevices();
-  const routerInfo = networkService.getRouterInfo();
+  const [devices, setDevices] = useState<Device[]>(() => networkService.getDevices());
+  const [routerInfo, setRouterInfo] = useState<RouterInfo | null>(() => networkService.getRouterInfo());
   const isAdmin = routerInfo?.isAdminAuthenticated || false;
+
+  // Real-time synchronization subscription
+  useEffect(() => {
+    const unsubscribe = networkService.subscribe(() => {
+      setDevices(networkService.getDevices());
+      setRouterInfo(networkService.getRouterInfo());
+    });
+    return unsubscribe;
+  }, []);
 
   const showSuccessFeedback = (msg: string) => {
     setActionSuccess(msg);
@@ -173,7 +182,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({
     });
 
     setStableOrderIds(list.map(d => d.id));
-  }, [sortBy, categoryFilter, statusFilter, manualRefreshCount]);
+  }, [sortBy, categoryFilter, statusFilter, manualRefreshCount, devices.map(d => `${d.id}_${d.status}`).join(',')]);
 
   // Keep devices in stable, fixed slots during real-time telemetry fluctuations (avoids positions jumping)
   const sortedDevices = useMemo(() => {

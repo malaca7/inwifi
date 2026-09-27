@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Wifi, Users, ShieldAlert, 
   ArrowDownCircle, Activity, Cpu, HardDrive, Radio, Clock, ChevronRight, Zap
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
-import { Device, RouterCapabilities, TrafficPoint } from '../types';
+import { Device, RouterCapabilities, TrafficPoint, NetworkEvent, RouterInfo } from '../types';
 import { DeviceIcon, DeviceStatusBadge } from '../components/devices/DeviceIcon';
 import { NetworkActivityChart } from '../components/dashboard/NetworkActivityChart';
 import { DeviceDetailsModal } from '../components/devices/DeviceDetailsModal';
@@ -25,11 +25,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 }) => {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [chartPeriod, setChartPeriod] = useState<'realtime' | 'day' | 'week' | 'month'>('realtime');
-  const [chartData, setChartData] = useState<TrafficPoint[]>(networkService.getTrafficStats());
+  const [chartData, setChartData] = useState<TrafficPoint[]>(() => networkService.getTrafficStats());
+  const [devices, setDevices] = useState<Device[]>(() => networkService.getDevices());
+  const [events, setEvents] = useState<NetworkEvent[]>(() => networkService.getEvents());
+  const [routerInfo, setRouterInfo] = useState<RouterInfo | null>(() => networkService.getRouterInfo());
 
-  const devices = networkService.getDevices();
-  const events = networkService.getEvents();
-  const routerInfo = networkService.getRouterInfo();
+  // Real-time synchronization subscription
+  useEffect(() => {
+    const unsubscribe = networkService.subscribe(() => {
+      setDevices(networkService.getDevices());
+      setEvents(networkService.getEvents());
+      setRouterInfo(networkService.getRouterInfo());
+      setChartData(networkService.getTrafficStats());
+    });
+    return unsubscribe;
+  }, []);
 
   // Metrics
   const onlineDevices = devices.filter(d => d.status === 'online');

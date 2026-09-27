@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, CheckCircle2, AlertTriangle, ShieldAlert, 
   Info, Volume2, VolumeX, Eye, 
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { networkService } from '../services/networkService';
 import { notificationService } from '../services/notificationService';
-import { RouterCapabilities } from '../types';
+import { RouterCapabilities, NetworkEvent } from '../types';
 import { DeviceDetailsModal } from '../components/devices/DeviceDetailsModal';
 
 interface AlertsPageProps {
@@ -18,8 +18,16 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ capabilities }) => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [pushStatus, setPushStatus] = useState<string>(() => notificationService.getPushPermissionStatus());
 
-  const events = networkService.getEvents();
+  const [events, setEvents] = useState<NetworkEvent[]>(() => networkService.getEvents());
   const settings = notificationService.getSettings();
+
+  // Real-time synchronization subscription
+  useEffect(() => {
+    const unsubscribe = networkService.subscribe(() => {
+      setEvents(networkService.getEvents());
+    });
+    return unsubscribe;
+  }, []);
 
   const filteredEvents = events.filter((e) => {
     if (filterType === 'unread') return !e.read;

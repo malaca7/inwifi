@@ -581,10 +581,9 @@ function handleRoutes(middlewares: any) {
 
     // Route: /api/router/devices or /inwifi/api/router/devices
     if (pathname.includes('/api/router/devices')) {
-      exec('arp -a', (err, stdout) => {
-        const activeIps = new Set<string>();
+      exec('arp -a', async (err, stdout) => {
         const currentGwIp = routerGatewayConfig.ipAddress || '192.168.1.1';
-        activeIps.add(currentGwIp); // Gateway principal sempre ativo
+        let hostIp = '192.168.1.11';
 
         // Add local host interface IP
         const ifaces = os.networkInterfaces();
@@ -592,7 +591,7 @@ function handleRoutes(middlewares: any) {
           if (addrs) {
             for (const a of addrs) {
               if (a.family === 'IPv4' && !a.internal && a.address.startsWith('192.168.')) {
-                activeIps.add(a.address);
+                hostIp = a.address;
               }
             }
           }
@@ -606,7 +605,6 @@ function handleRoutes(middlewares: any) {
             if (match) {
               const ip = match[1];
               const mac = match[2].replace(/-/g, ':').toUpperCase();
-              const type = (match[3] || '').toLowerCase();
               if (
                 !ip.startsWith('224.') && 
                 !ip.startsWith('239.') && 
@@ -614,19 +612,15 @@ function handleRoutes(middlewares: any) {
                 ip !== '255.255.255.255'
               ) {
                 arpDetectedMap.set(ip, mac);
-                // Entradas dinâmicas na tabela ARP estão ativamente associadas ao roteador
-                if (type.includes('din') || type.includes('dyn')) {
-                  activeIps.add(ip);
-                }
               }
             }
           }
         }
 
-        // Lista completa de dispositivos conhecidos da rede LAN
-        const allKnownDevices = [
+        // Base de dispositivos conhecidos da rede LAN
+        const allKnownDevices: Array<{ ip: string; mac: string; hostname?: string }> = [
           { ip: currentGwIp, mac: routerGatewayConfig.macAddress, hostname: routerGatewayConfig.name },
-          { ip: '192.168.1.11', mac: '70:32:17:41:2F:4E', hostname: 'DESKTOP-TK3OMIH' },
+          { ip: hostIp, mac: '70:32:17:41:2F:4E', hostname: 'DESKTOP-TK3OMIH' },
           { ip: '192.168.1.2', mac: '14:09:B4:A6:F2:D7', hostname: 'Smartphone Motorola' },
           { ip: '192.168.1.14', mac: '32:8A:95:8A:A6:18', hostname: 'Dispositivo Wi-Fi Ativo' },
           { ip: '192.168.1.3', mac: 'F4:FE:FB:4F:0D:0C', hostname: 'Notebook Intel' },
@@ -637,14 +631,39 @@ function handleRoutes(middlewares: any) {
           { ip: '192.168.1.20', mac: '1C:FE:2B:AE:24:4A', hostname: 'Apple MacBook Pro' }
         ];
 
+        // Adiciona dinamicamente qualquer novo dispositivo descoberto pelo ARP que não esteja na lista inicial
+        for (const [ip, mac] of arpDetectedMap.entries()) {
+          if (!allKnownDevices.some(d => d.ip === ip || d.mac === mac)) {
+            allKnownDevices.push({
+              ip,
+              mac,
+              hostname: `Dispositivo Wi-Fi (${ip})`
+            });
+          }
+        }
+
         const wifiSsid24 = routerWifiSettings.ssid24 || 'MALAQUIAS';
         const wifiSsid5 = routerWifiSettings.isUnifiedSsid ? wifiSsid24 : (routerWifiSettings.ssid5 || 'Ta Liso Né?!?');
 
-        // Sincroniza cada dispositivo com o status real do roteador (Online vs Offline) e SSIDs atuais
-        const devices = allKnownDevices.map((dev) => {
-          const isOnline = activeIps.has(dev.ip);
+        // Teste de Ping rápido e simultâneo (250ms) para obter o status 100% real de cada aparelho
+        const pingProbe = (targetIp: string): Promise<boolean> => {
+          if (targetIp === currentGwIp || targetIp === hostIp) {
+            return Promise.resolve(true);
+          }
+          return new Promise((resolve) => {
+            exec(`ping -n 1 -w 250 ${targetIp}`, { timeout: 350 }, (pErr, pStdout) => {
+              const isAlive = !pErr && (pStdout.includes('TTL=') || pStdout.includes('ttl='));
+              resolve(isAlive);
+            });
+          });
+        };
+
+        const liveResults = await Promise.all(allKnownDevices.map(d => pingProbe(d.ip)));
+
+        const devices = allKnownDevices.map((dev, idx) => {
+          const isOnline = liveResults[idx];
           const is5G = dev.ip === '192.168.1.2' || dev.ip === '192.168.1.6' || dev.ip === '192.168.1.7';
-          const isEthernet = dev.ip === currentGwIp || dev.ip === '192.168.1.11';
+          const isEthernet = dev.ip === currentGwIp || dev.ip === hostIp;
           return {
             ...dev,
             isOnline,

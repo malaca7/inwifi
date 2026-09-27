@@ -12,6 +12,7 @@ const STORAGE_KEY_OWNERS = 'inwifi_device_owners';
 const STORAGE_KEY_WIFI_SETTINGS = 'inwifi_wifi_settings';
 const STORAGE_KEY_ROUTER_INFO = 'inwifi_router_info';
 const STORAGE_KEY_BANDS = 'inwifi_device_bands';
+const STORAGE_KEY_DEVICES_CACHE = 'inwifi_devices_cache';
 
 const DEFAULT_ROUTER_INFO: RouterInfo = {
   id: 'real-lan-router',
@@ -275,8 +276,10 @@ export class RealRouterAdapter implements RouterAdapter {
       } catch {}
     }
 
-    if (!rawList || rawList.length === 0) {
-      rawList = INITIAL_REAL_DEVICES;
+    if (rawList && rawList.length > 0) {
+      this.saveStorage(STORAGE_KEY_DEVICES_CACHE, rawList);
+    } else {
+      rawList = this.loadStorage(STORAGE_KEY_DEVICES_CACHE, INITIAL_REAL_DEVICES);
     }
 
     const nowIso = new Date().toISOString();
@@ -314,7 +317,8 @@ export class RealRouterAdapter implements RouterAdapter {
         ? Boolean(item.isOnline) 
         : (item.ip === currentGwIp || item.ip === '192.168.1.1' || item.ip === '192.168.1.11' || item.ip === '192.168.1.2' || item.ip === '192.168.1.14');
       
-      const computedStatus: DeviceStatus = savedStates[deviceId] 
+      // savedStates só sobrepõe se for bloqueio ou pausa manual
+      const computedStatus: DeviceStatus = (savedStates[deviceId] === 'blocked' || savedStates[deviceId] === 'paused')
         ? savedStates[deviceId] 
         : (isOnline ? 'online' : 'offline');
 
