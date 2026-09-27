@@ -18,31 +18,31 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   onCloseDrawer
 }) => {
   const mainTabs: Array<{ id: NavTab; label: string; icon: React.ReactNode; badge?: number }> = [
-    { id: 'dashboard', label: 'Painel', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: 'dashboard', label: 'Início', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'devices', label: 'Aparelhos', icon: <Laptop2 className="w-5 h-5" /> },
-    { id: 'topology', label: 'Rede', icon: <Share2 className="w-5 h-5" /> },
+    { id: 'routers', label: 'Roteador', icon: <Router className="w-5 h-5" /> },
     { id: 'alerts', label: 'Alertas', icon: <Bell className="w-5 h-5" />, badge: unreadCount },
   ];
 
   const drawerTabs: Array<{ id: NavTab; label: string; icon: React.ReactNode }> = [
+    { id: 'topology', label: 'Topologia da Rede', icon: <Share2 className="w-5 h-5" /> },
     { id: 'traffic', label: 'Consumo & Tráfego', icon: <Activity className="w-5 h-5" /> },
     { id: 'access', label: 'Controle de Acesso', icon: <ShieldAlert className="w-5 h-5" /> },
     { id: 'schedules', label: 'Agendamentos', icon: <Calendar className="w-5 h-5" /> },
-    { id: 'routers', label: 'Roteadores & Conectores', icon: <Router className="w-5 h-5" /> },
     { id: 'settings', label: 'Configurações do Sistema', icon: <Settings className="w-5 h-5" /> },
   ];
 
   return (
     <>
-      {/* Fixed Bottom Bar on Mobile */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-xl border-t border-neutral-800 lg:hidden px-2 py-2 flex items-center justify-around shadow-2xl">
+      {/* Fixed Bottom Bar on Mobile (Native App Shell) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-xl border-t border-neutral-800 lg:hidden px-3 pt-2 pb-2.5 pb-safe flex items-center justify-around shadow-[0_-8px_30px_rgba(0,0,0,0.85)]">
         {mainTabs.map((item) => {
           const isActive = currentTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onSelectTab(item.id)}
-              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition relative cursor-pointer ${
+              className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-2xl transition-all relative cursor-pointer active:scale-95 ${
                 isActive ? 'text-cyan-400 font-bold' : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
@@ -54,25 +54,31 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   </span>
                 )}
               </div>
-              <span className="text-[10px]">{item.label}</span>
+              <span className="text-[10px] tracking-tight">{item.label}</span>
+              {isActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-glow-sm" />
+              )}
             </button>
           );
         })}
 
-        {/* More Options Tab */}
+        {/* More Options Tab (Drawer) */}
         <button
           onClick={() => {
             if (isDrawerOpen) onCloseDrawer();
-            else onSelectTab(currentTab === 'traffic' || currentTab === 'access' || currentTab === 'schedules' || currentTab === 'routers' || currentTab === 'settings' ? currentTab : 'traffic');
+            else onSelectTab('topology');
           }}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition cursor-pointer ${
-            ['traffic', 'access', 'schedules', 'routers', 'settings'].includes(currentTab)
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-2xl transition-all relative cursor-pointer active:scale-95 ${
+            ['topology', 'traffic', 'access', 'schedules', 'settings'].includes(currentTab)
               ? 'text-cyan-400 font-bold'
               : 'text-neutral-400 hover:text-neutral-200'
           }`}
         >
           <MoreHorizontal className="w-5 h-5" />
-          <span className="text-[10px]">Mais</span>
+          <span className="text-[10px] tracking-tight">Mais</span>
+          {['topology', 'traffic', 'access', 'schedules', 'settings'].includes(currentTab) && (
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-glow-sm" />
+          )}
         </button>
       </nav>
 

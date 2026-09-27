@@ -23,9 +23,9 @@ const DEFAULT_WIFI_SETTINGS: WifiSettings = {
   bandwidth5: '80MHz',
   txPower: '100%',
   wpsEnabled: true,
-  guestEnabled: false,
-  guestSsid: 'Ta Liso Né?!?',
-  guestPassword: 'botecredito',
+  guestEnabled: true,
+  guestSsid: 'MALAQUIAS - Convidados',
+  guestPassword: 'visitaswifi',
   guestIsolation: true,
   guestDurationHours: 0
 };

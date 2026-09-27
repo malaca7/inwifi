@@ -10,9 +10,15 @@ import { WifiSettingsPanel } from '../components/router/WifiSettingsPanel';
 
 interface RoutersPageProps {
   capabilities: RouterCapabilities;
+  initialSubTab?: string;
+  onSubTabChange?: (tab: string) => void;
 }
 
-export const RoutersPage: React.FC<RoutersPageProps> = ({ capabilities }) => {
+export const RoutersPage: React.FC<RoutersPageProps> = ({ 
+  capabilities,
+  initialSubTab,
+  onSubTabChange
+}) => {
   const routerInfo = networkService.getRouterInfo();
   const isAdmin = routerInfo?.isAdminAuthenticated || false;
 
@@ -262,6 +268,8 @@ export const RoutersPage: React.FC<RoutersPageProps> = ({ capabilities }) => {
       {/* WI-FI & RADIO MANAGEMENT PANEL */}
       <WifiSettingsPanel
         isAdmin={isAdmin}
+        initialSubTab={initialSubTab}
+        onSubTabChange={onSubTabChange}
         onOpenAdminLogin={() => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}

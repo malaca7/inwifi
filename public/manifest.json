@@ -1,18 +1,20 @@
 {
-  "name": "In-Wifi — Gerenciador Profissional de Rede",
+  "name": "IN-WIFI — Central de Inteligência de Rede",
   "short_name": "In-Wifi",
-  "description": "Painel profissional para gerenciamento de rede LAN, roteadores e dispositivos conectados.",
-  "start_url": "/",
+  "description": "Gerenciador Avançado de Rede Local, Dispositivos e Roteador Wi-Fi",
+  "start_url": "./#/dashboard",
   "display": "standalone",
-  "background_color": "#06080F",
-  "theme_color": "#0066FF",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
+  "scope": "./",
   "icons": [
     {
-      "src": "/logo.svg",
+      "src": "logo.png",
       "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["utilities", "productivity", "network"]
 }

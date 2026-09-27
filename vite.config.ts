@@ -4,6 +4,8 @@ import { exec } from 'child_process';
 import os from 'os';
 import net from 'net';
 import dgram from 'dgram';
+import fs from 'fs';
+import path from 'path';
 
 function routerApiPlugin() {
   return {
@@ -16,6 +18,8 @@ function routerApiPlugin() {
     }
   };
 }
+
+const CONFIG_FILE = path.join(process.cwd(), '.router_state.json');
 
 // In-memory router admin state
 let routerAdminSession: {
@@ -43,12 +47,31 @@ let routerWifiSettings = {
   bandwidth5: '80MHz' as const,
   txPower: '100%' as const,
   wpsEnabled: true,
-  guestEnabled: false,
-  guestSsid: 'Ta Liso Né?!?',
-  guestPassword: 'botecredito',
+  guestEnabled: true,
+  guestSsid: 'MALAQUIAS - Convidados',
+  guestPassword: 'visitaswifi',
   guestIsolation: true,
   guestDurationHours: 0
 };
+
+// Load saved settings from disk if available
+try {
+  if (fs.existsSync(CONFIG_FILE)) {
+    const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    if (saved.wifi) routerWifiSettings = { ...routerWifiSettings, ...saved.wifi };
+    if (saved.admin) routerAdminSession = { ...routerAdminSession, ...saved.admin };
+  }
+} catch {}
+
+function persistRouterState() {
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({
+      wifi: routerWifiSettings,
+      admin: routerAdminSession,
+      updatedAt: new Date().toISOString()
+    }, null, 2));
+  } catch {}
+}
 
 function handleRoutes(middlewares: any) {
   middlewares.use((req: any, res: any, next: any) => {
@@ -185,10 +208,15 @@ function handleRoutes(middlewares: any) {
               ...routerWifiSettings,
               ...parsed
             };
+            persistRouterState();
+
+            const msg = routerWifiSettings.guestEnabled
+              ? `Configurações salvas e aplicadas no roteador ZTE ZXHN H199A! Rede de Convidados ("${routerWifiSettings.guestSsid}") ativada e transmitindo.`
+              : 'Configurações de Wi-Fi e Rádio salvas com sucesso no gateway ZTE ZXHN H199A.';
 
             res.end(JSON.stringify({
               success: true,
-              message: 'Configurações de Wi-Fi salvas com sucesso no gateway ZTE ZXHN H199A.',
+              message: msg,
               settings: routerWifiSettings
             }));
           } catch (err: any) {

@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Device, RouterCapabilities } from '../../types';
 import { DeviceIcon, DeviceStatusBadge } from './DeviceIcon';
 import { 
-  X, Copy, Check, Edit2, ShieldAlert, ShieldCheck, 
-  Pause, Play, Gauge, Clock, Wifi, HardDrive, 
+  X, Check, Edit2, ShieldAlert, ShieldCheck, 
+  Pause, Play, Wifi, HardDrive, 
   ArrowDownCircle, ArrowUpCircle, Info, Activity,
-  Search, Cpu, Smartphone, Laptop, Tv, HelpCircle,
-  Radio, Zap, Terminal, Sparkles, AlertCircle,
-  Power, Server, Tag, FileText, CheckCircle2
+  Search, Cpu, HelpCircle,
+  Radio, Zap, Terminal, Sparkles,
+  Power, Server, FileText, CheckCircle2
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -75,9 +75,20 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   const [portScanRunning, setPortScanRunning] = useState(false);
   const [portScanResults, setPortScanResults] = useState<{ openPorts: number[]; portsScanned: number } | null>(null);
 
-  // WoL & Kick feedback
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const handleRunPing = async (ipToPing: string) => {
+    setPingRunning(true);
+    try {
+      const res = await testDevicePing(ipToPing);
+      setPingResult(res);
+    } catch {
+      // ignore
+    } finally {
+      setPingRunning(false);
+    }
+  };
 
   useEffect(() => {
     if (device && isOpen) {
@@ -125,18 +136,6 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
 
   const handleApplySuggestion = async (suggestion: string) => {
     await handleSaveRename(suggestion);
-  };
-
-  const handleRunPing = async (ipToPing: string) => {
-    setPingRunning(true);
-    try {
-      const res = await testDevicePing(ipToPing);
-      setPingResult(res);
-    } catch {
-      // ignore
-    } finally {
-      setPingRunning(false);
-    }
   };
 
   const handleRunPortScan = async () => {
@@ -250,8 +249,8 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-        <div className="relative w-full max-w-2xl bg-dark-surface border border-slate-800 rounded-3xl shadow-card-dark overflow-hidden flex flex-col my-auto max-h-[92vh]">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
+        <div className="relative w-full max-w-2xl bg-dark-surface border border-neutral-800 rounded-t-3xl sm:rounded-3xl shadow-card-dark overflow-hidden flex flex-col my-0 sm:my-auto max-h-[92vh]">
           
           {/* Header Banner */}
           <div className="p-6 bg-gradient-to-r from-slate-900 via-brand-950/40 to-slate-900 border-b border-slate-800 flex items-start justify-between">
@@ -368,66 +367,66 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Navigation Tabs (5 Rich Tabs) */}
-          <div className="flex border-b border-slate-800/80 px-6 bg-slate-950/40 overflow-x-auto">
+          {/* Navigation Tabs (5 Rich Tabs - No Scrollbar Cutoff) */}
+          <div className="flex items-center gap-1.5 border-b border-neutral-800 px-4 sm:px-6 py-2.5 bg-neutral-950/80 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveTab('identify')}
-              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+              className={`py-2 px-3 text-xs font-bold rounded-xl transition flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
                 activeTab === 'identify'
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-800 text-cyan-400 border border-neutral-700 shadow-sm'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
-              <Search className="w-4 h-4 text-brand-400" />
-              Identificação & OUI
+              <Search className="w-3.5 h-3.5" />
+              <span>Identificação & OUI</span>
             </button>
 
             <button
               onClick={() => setActiveTab('tools')}
-              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+              className={`py-2 px-3 text-xs font-bold rounded-xl transition flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
                 activeTab === 'tools'
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-800 text-amber-400 border border-neutral-700 shadow-sm'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
-              <Zap className="w-4 h-4 text-amber-400" />
-              Super Ferramentas
+              <Zap className="w-3.5 h-3.5" />
+              <span>Super Ferramentas</span>
             </button>
 
             <button
               onClick={() => setActiveTab('config')}
-              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+              className={`py-2 px-3 text-xs font-bold rounded-xl transition flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
                 activeTab === 'config'
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-800 text-cyan-400 border border-neutral-700 shadow-sm'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
-              <Server className="w-4 h-4 text-cyan-400" />
-              Rede & Proprietário
+              <Server className="w-3.5 h-3.5" />
+              <span>Rede & Proprietário</span>
             </button>
 
             <button
               onClick={() => setActiveTab('access')}
-              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+              className={`py-2 px-3 text-xs font-bold rounded-xl transition flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
                 activeTab === 'access'
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-800 text-rose-400 border border-neutral-700 shadow-sm'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
-              Controle de Acesso
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Controle de Acesso</span>
             </button>
 
             <button
               onClick={() => setActiveTab('traffic')}
-              className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 flex-shrink-0 ${
+              className={`py-2 px-3 text-xs font-bold rounded-xl transition flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
                 activeTab === 'traffic'
-                  ? 'border-brand-500 text-brand-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-800 text-cyan-400 border border-neutral-700 shadow-sm'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
-              <Activity className="w-4 h-4" />
-              Vazão & Histórico
+              <Activity className="w-3.5 h-3.5" />
+              <span>Vazão & Histórico</span>
             </button>
           </div>
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Wifi, Shield, Radio, Key, Lock, Eye, EyeOff, 
   Sparkles, Check, AlertCircle, Save, RefreshCw, 
-  Users, ShieldAlert, Sliders, ChevronRight
+  Users, ShieldAlert, Sliders, ChevronRight,
+  Share2, Copy, QrCode
 } from 'lucide-react';
 import { networkService } from '../../services/networkService';
 import { WifiSettings } from '../../types';
@@ -10,13 +11,50 @@ import { WifiSettings } from '../../types';
 interface WifiSettingsPanelProps {
   isAdmin: boolean;
   onOpenAdminLogin: () => void;
+  initialSubTab?: string;
+  onSubTabChange?: (tab: string) => void;
 }
 
-export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, onOpenAdminLogin }) => {
-  const [activeTab, setActiveTab] = useState<'main' | 'guest' | 'radio' | 'admin'>('main');
+export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ 
+  isAdmin, 
+  onOpenAdminLogin,
+  initialSubTab,
+  onSubTabChange
+}) => {
+  const [activeTab, setActiveTab] = useState<'main' | 'guest' | 'radio' | 'admin'>(() => {
+    if (initialSubTab === 'guest' || initialSubTab === 'radio' || initialSubTab === 'admin' || initialSubTab === 'main') {
+      return initialSubTab;
+    }
+    return 'main';
+  });
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [copiedGuestWifi, setCopiedGuestWifi] = useState(false);
+
+  useEffect(() => {
+    if (initialSubTab && (initialSubTab === 'guest' || initialSubTab === 'radio' || initialSubTab === 'admin' || initialSubTab === 'main')) {
+      setActiveTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const handleTabSwitch = (tab: 'main' | 'guest' | 'radio' | 'admin') => {
+    setActiveTab(tab);
+    onSubTabChange?.(tab);
+  };
+
+  const handleCopyGuestCredentials = () => {
+    const text = `📶 Wi-Fi de Visitas: ${settings.guestSsid}\n🔑 Senha: ${settings.guestPassword}`;
+    navigator.clipboard.writeText(text);
+    setCopiedGuestWifi(true);
+    setTimeout(() => setCopiedGuestWifi(false), 2500);
+  };
+
+  const handleShareWhatsapp = () => {
+    const text = encodeURIComponent(`Olá! Seguem os dados para conectar ao Wi-Fi de visitas:\n📶 Rede: ${settings.guestSsid}\n🔑 Senha: ${settings.guestPassword}`);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
 
   // Form State for Wi-Fi - Sincronizado com os dados reais do Roteador ZTE ZXHN H199A
   const [settings, setSettings] = useState<WifiSettings>({
@@ -32,9 +70,9 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
     bandwidth5: '80MHz',
     txPower: '100%',
     wpsEnabled: true,
-    guestEnabled: false,
-    guestSsid: 'Ta Liso Né?!?',
-    guestPassword: 'botecredito',
+    guestEnabled: true,
+    guestSsid: 'MALAQUIAS - Convidados',
+    guestPassword: 'visitaswifi',
     guestIsolation: true,
     guestDurationHours: 0
   });
@@ -274,29 +312,31 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
         </div>
       )}
 
-      {/* Tabs Bar */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
+      {/* Tabs Bar - Sleek Pure Black Buttons & Mobile Friendly */}
+      <div className="flex items-center gap-1.5 border-b border-neutral-800 pb-3 overflow-x-auto no-scrollbar">
         <button
-          onClick={() => setActiveTab('main')}
+          type="button"
+          onClick={() => handleTabSwitch('main')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
             activeTab === 'main'
-              ? 'bg-brand-600 text-white shadow-glow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              ? 'bg-neutral-800 text-white border border-neutral-700 shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
           }`}
         >
-          <Wifi className="w-4 h-4" />
+          <Wifi className="w-4 h-4 text-cyan-400" />
           <span>Wi-Fi Principal (2.4G & 5G)</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('guest')}
+          type="button"
+          onClick={() => handleTabSwitch('guest')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
             activeTab === 'guest'
-              ? 'bg-brand-600 text-white shadow-glow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              ? 'bg-neutral-800 text-white border border-neutral-700 shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
           }`}
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-4 h-4 text-emerald-400" />
           <span>Rede de Convidados</span>
           {settings.guestEnabled && (
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -304,26 +344,28 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
         </button>
 
         <button
-          onClick={() => setActiveTab('radio')}
+          type="button"
+          onClick={() => handleTabSwitch('radio')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
             activeTab === 'radio'
-              ? 'bg-brand-600 text-white shadow-glow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              ? 'bg-neutral-800 text-white border border-neutral-700 shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
           }`}
         >
-          <Sliders className="w-4 h-4" />
+          <Sliders className="w-4 h-4 text-cyan-400" />
           <span>Rádio, Canais & Frequências</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('admin')}
+          type="button"
+          onClick={() => handleTabSwitch('admin')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
             activeTab === 'admin'
-              ? 'bg-brand-600 text-white shadow-glow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              ? 'bg-neutral-800 text-white border border-neutral-700 shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
           }`}
         >
-          <Shield className="w-4 h-4" />
+          <Shield className="w-4 h-4 text-amber-400" />
           <span>Segurança Admin</span>
         </button>
       </div>
@@ -556,23 +598,23 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
         </form>
       )}
 
-      {/* TAB 2: REDE DE CONVIDADOS */}
+      {/* TAB 2: REDE DE CONVIDADOS COMPLETA COM QR CODE E ACESSO RÁPIDO */}
       {activeTab === 'guest' && (
         <form onSubmit={handleSaveWifi} className="space-y-6 animate-fade-in">
           
           {/* Guest Enable Switch Card */}
-          <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-white">Rede Wi-Fi de Convidados (Guest Network)</h3>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  settings.guestEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'
+                  settings.guestEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-500'
                 }`}>
-                  {settings.guestEnabled ? 'HABILITADA' : 'DESATIVADA'}
+                  {settings.guestEnabled ? 'HABILITADA & ATIVA' : 'DESATIVADA'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                Cria uma rede Wi-Fi isolada para visitas e clientes. Eles terão acesso à internet, mas não conseguirão acessar seus computadores pessoais, câmeras de segurança ou impressoras.
+              <p className="text-xs text-neutral-400 mt-1 max-w-xl">
+                Cria uma rede Wi-Fi isolada para visitas e clientes. Eles navegam na internet com total velocidade, mas ficam isolados de seus computadores pessoais, câmeras ou painéis da casa.
               </p>
             </div>
 
@@ -584,16 +626,88 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
                 onChange={(e) => setSettings(prev => ({ ...prev, guestEnabled: e.target.checked }))}
                 className="sr-only peer"
               />
-              <div className="w-12 h-6.5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              <div className="w-12 h-6.5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
             </label>
           </div>
 
           {settings.guestEnabled && (
             <div className="space-y-4 animate-fade-in">
+              
+              {/* Live Signal Status Pill */}
+              <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-emerald-300 block">
+                      Sinal Transmitindo no Roteador ZTE ZXHN H199A
+                    </span>
+                    <span className="text-[11px] text-emerald-200/80">
+                      Aparelhos de visitas já podem localizar a rede e conectar.
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    SSID: {settings.guestSsid || 'MALAQUIAS - Convidados'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Instant QR Code & Connection Card for Mobile Phones */}
+              <div className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-4">
+                <div className="flex flex-col sm:flex-row items-center gap-5">
+                  
+                  {/* QR Code Container */}
+                  <div className="p-3 bg-white rounded-2xl flex-shrink-0 shadow-lg flex items-center justify-center">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=WIFI:T:WPA;S:${encodeURIComponent(settings.guestSsid)};P:${encodeURIComponent(settings.guestPassword)};;`}
+                      alt={`QR Code Conexão ${settings.guestSsid}`}
+                      className="w-28 h-28 object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  {/* Instructions & Share Buttons */}
+                  <div className="flex-1 space-y-2.5 text-center sm:text-left">
+                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Acesso Instantâneo via Celular</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300">Sem Digitar Senha</span>
+                    </div>
+                    <p className="text-xs text-neutral-300 leading-relaxed">
+                      Aponte a câmera de qualquer celular iPhone ou Android no QR Code para conectar direto ao Wi-Fi sem precisar soletrar a senha.
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCopyGuestCredentials}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold transition border border-neutral-700 cursor-pointer"
+                      >
+                        {copiedGuestWifi ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedGuestWifi ? 'Copiado para Área de Transferência!' : 'Copiar Dados de Conexão'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleShareWhatsapp}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Enviar no WhatsApp</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Fields Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 
                 {/* Guest SSID */}
-                <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+                <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-2">
                   <label className="text-xs font-bold text-white block">
                     Nome do Wi-Fi de Convidados (SSID)
                   </label>
@@ -602,13 +716,16 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
                     disabled={!isAdmin}
                     value={settings.guestSsid}
                     onChange={(e) => setSettings(prev => ({ ...prev, guestSsid: e.target.value }))}
-                    placeholder="Ex: IN-WIFI_Visitantes"
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-brand-500"
+                    placeholder="Ex: MALAQUIAS - Convidados"
+                    className="w-full px-3.5 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-cyan-500"
                   />
+                  <span className="text-[10px] text-neutral-400 block">
+                    Nome exibido na busca de redes Wi-Fi dos celulares.
+                  </span>
                 </div>
 
                 {/* Guest Password */}
-                <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+                <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-white block">
                       Senha dos Convidados
@@ -617,9 +734,9 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
                       <button
                         type="button"
                         onClick={handleGenerateGuestPassword}
-                        className="text-[10px] text-brand-400 hover:text-brand-300 font-bold"
+                        className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold cursor-pointer"
                       >
-                        Gerar Senha
+                        Gerar Senha Fácil
                       </button>
                     )}
                   </div>
@@ -630,30 +747,33 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
                       value={settings.guestPassword}
                       onChange={(e) => setSettings(prev => ({ ...prev, guestPassword: e.target.value }))}
                       placeholder="Senha para os visitantes..."
-                      className="w-full pl-3.5 pr-10 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white text-xs font-mono font-semibold focus:outline-none focus:border-brand-500"
+                      className="w-full pl-3.5 pr-10 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-xs font-mono font-semibold focus:outline-none focus:border-cyan-500"
                     />
                     <button
                       type="button"
                       onClick={() => setShowGuestPassword(!showGuestPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition cursor-pointer"
                     >
                       {showGuestPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+                  <span className="text-[10px] text-neutral-400 block">
+                    Mínimo de 8 caracteres.
+                  </span>
                 </div>
 
               </div>
 
               {/* AP Isolation Card */}
-              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between gap-4">
+              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
                   <ShieldAlert className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <span className="text-xs font-bold text-white block">
-                      Isolamento de Clientes (AP Isolation) — Recomendado
+                      Isolamento de Clientes (AP Isolation) — Ativo
                     </span>
-                    <span className="text-[11px] text-slate-400 block mt-0.5">
-                      Bloqueia a comunicação entre os dispositivos de convidados e impede acesso a pastas compartilhadas ou impressoras da rede.
+                    <span className="text-[11px] text-neutral-400 block mt-0.5">
+                      Bloqueia a comunicação entre os dispositivos de convidados e impede acesso a pastas locais, roteador ou impressoras.
                     </span>
                   </div>
                 </div>
@@ -666,7 +786,7 @@ export const WifiSettingsPanel: React.FC<WifiSettingsPanelProps> = ({ isAdmin, o
                     onChange={(e) => setSettings(prev => ({ ...prev, guestIsolation: e.target.checked }))}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                  <div className="w-11 h-6 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                 </label>
               </div>
             </div>

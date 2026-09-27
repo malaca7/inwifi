@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, Edit2, ShieldAlert, 
   ShieldCheck, Pause, Play, Eye, ArrowDownCircle, 
@@ -16,12 +16,18 @@ import { isRandomizedMac, testDevicePing } from '../utils/deviceIdentifier';
 
 interface DevicesPageProps {
   capabilities: RouterCapabilities;
+  queryParams?: Record<string, string>;
+  onQueryChange?: (params: Record<string, string>) => void;
 }
 
-export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
+export const DevicesPage: React.FC<DevicesPageProps> = ({ 
+  capabilities,
+  queryParams,
+  onQueryChange
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>(queryParams?.categoria || 'all');
+  const [statusFilter, setStatusFilter] = useState<string>(queryParams?.filtro || 'all');
   const [sortBy, setSortBy] = useState<'speed' | 'consumption' | 'name' | 'lastSeen'>('speed');
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
@@ -48,6 +54,51 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
   const showSuccessFeedback = (msg: string) => {
     setActionSuccess(msg);
     setTimeout(() => setActionSuccess(null), 4000);
+  };
+
+  const handleInlinePing = async (dev: Device) => {
+    setPingStates(prev => ({ ...prev, [dev.id]: { latency: null, alive: false, loading: true } }));
+    try {
+      const res = await testDevicePing(dev.ip);
+      setPingStates(prev => ({ ...prev, [dev.id]: { latency: res.latencyMs, alive: res.alive, loading: false } }));
+    } catch {
+      setPingStates(prev => ({ ...prev, [dev.id]: { latency: null, alive: false, loading: false } }));
+    }
+  };
+
+  // Sync state with queryParams from router
+  useEffect(() => {
+    if (queryParams?.filtro && queryParams.filtro !== statusFilter) {
+      setStatusFilter(queryParams.filtro);
+    }
+    if (queryParams?.categoria && queryParams.categoria !== categoryFilter) {
+      setCategoryFilter(queryParams.categoria);
+    }
+    if (queryParams?.device) {
+      const found = devices.find(d => d.id === queryParams.device);
+      if (found) setSelectedDevice(found);
+    }
+  }, [queryParams]);
+
+  const handleSetStatusFilter = (filter: string) => {
+    setStatusFilter(filter);
+    onQueryChange?.({ ...queryParams, filtro: filter });
+  };
+
+  const handleSetCategoryFilter = (cat: string) => {
+    setCategoryFilter(cat);
+    onQueryChange?.({ ...queryParams, categoria: cat });
+  };
+
+  const handleSelectDevice = (dev: Device | null) => {
+    setSelectedDevice(dev);
+    if (dev) {
+      onQueryChange?.({ ...queryParams, device: dev.id });
+    } else {
+      const next = { ...queryParams };
+      delete next.device;
+      onQueryChange?.(next);
+    }
   };
 
   // Filtering
@@ -331,7 +382,7 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
       {/* Network Overview Summary Counters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div 
-          onClick={() => setStatusFilter('wlan')}
+          onClick={() => handleSetStatusFilter('wlan')}
           className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
             statusFilter === 'wlan' 
               ? 'bg-cyan-950/40 border-cyan-500/50 shadow-glow-sm' 
@@ -564,8 +615,10 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
             <p className="text-xs text-slate-400">Tente ajustar seus termos de busca ou filtros.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <>
+            {/* Desktop Table View (hidden on mobile) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
               <thead className="bg-slate-950/80 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 <tr>
                   <th className="py-4 px-4 w-10 text-center">
@@ -810,8 +863,103 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Mobile Native App Cards View (md:hidden) */}
+          <div className="md:hidden divide-y divide-neutral-800/80">
+            {sortedDevices.map((device) => {
+              const isSelected = selectedDeviceIds.has(device.id);
+              const pingInfo = pingStates[device.id];
+
+              return (
+                <div 
+                  key={device.id}
+                  onClick={() => handleSelectDevice(device)}
+                  className={`p-4 transition cursor-pointer active:bg-neutral-900 ${
+                    isSelected ? 'bg-cyan-950/20' : ''
+                  }`}
+                >
+                  {/* Top Row: Icon, Names, Band & Status */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <DeviceIcon
+                        category={device.category}
+                        band={device.band}
+                        status={device.status}
+                        size="md"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-white text-sm truncate">
+                            {device.customName || device.originalHostname}
+                          </span>
+                          {device.customName && (
+                            <span className="text-[10px] text-neutral-400 font-mono truncate">
+                              ({device.originalHostname})
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-1 text-xs font-mono">
+                          <span className="text-cyan-400 font-semibold">{device.ip}</span>
+                          <span className="text-neutral-600">•</span>
+                          <span className="text-neutral-400">{device.manufacturer}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <DeviceStatusBadge status={device.status} />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-neutral-800 text-neutral-300">
+                        {device.band}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Traffic & Quick Action Buttons */}
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-neutral-900 text-xs">
+                    <div className="flex items-center gap-1.5 font-mono text-emerald-400 text-xs">
+                      <ArrowDownCircle className="w-3.5 h-3.5" />
+                      <span>{formatSpeed(device.currentDownloadSpeedKbps)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleInlinePing(device)}
+                        disabled={pingInfo?.loading}
+                        className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[11px] font-semibold transition flex items-center gap-1"
+                      >
+                        <Zap className={`w-3 h-3 text-amber-400 ${pingInfo?.loading ? 'animate-spin' : ''}`} />
+                        <span>{pingInfo?.latency !== undefined && pingInfo.latency !== null ? `${pingInfo.latency}ms` : 'Ping'}</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => handleToggleBlock(device, e)}
+                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition flex items-center gap-1 ${
+                          device.status === 'blocked'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-neutral-800 text-rose-400 hover:bg-rose-500/20'
+                        }`}
+                      >
+                        <ShieldAlert className="w-3 h-3" />
+                        <span>{device.status === 'blocked' ? 'Liberar' : 'Bloquear'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleSelectDevice(device)}
+                        className="p-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-cyan-400 transition"
+                        title="Ver detalhes"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
 
       {/* Quick Rename & Owner Modal */}
       {deviceToRename && (
@@ -869,9 +1017,9 @@ export const DevicesPage: React.FC<DevicesPageProps> = ({ capabilities }) => {
         device={selectedDevice}
         isOpen={!!selectedDevice}
         capabilities={capabilities}
-        onClose={() => setSelectedDevice(null)}
+        onClose={() => handleSelectDevice(null)}
         onUpdated={() => {
-          setSelectedDevice(null);
+          handleSelectDevice(null);
           networkService.refreshData();
         }}
       />

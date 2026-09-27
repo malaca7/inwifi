@@ -12,9 +12,10 @@ import { SchedulesPage } from './pages/SchedulesPage';
 import { RoutersPage } from './pages/RoutersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { networkService } from './services/networkService';
+import { useAppRouter } from './utils/router';
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const { currentTab, currentSubTab, queryParams, navigate } = useAppRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [, setTick] = useState(0);
 
@@ -42,19 +43,31 @@ export const App: React.FC = () => {
   const capabilities = networkService.getCapabilities();
   const unreadAlertsCount = networkService.getUnreadEventsCount();
 
+  const handleSelectTab = (tab: NavTab) => {
+    navigate(tab);
+    const mainEl = document.getElementById('main-scroll-area');
+    if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const renderActivePage = () => {
     switch (currentTab) {
       case 'dashboard':
         return (
           <DashboardPage
-            onNavigateToDevices={() => setCurrentTab('devices')}
-            onNavigateToAlerts={() => setCurrentTab('alerts')}
-            onNavigateToTraffic={() => setCurrentTab('traffic')}
+            onNavigateToDevices={() => handleSelectTab('devices')}
+            onNavigateToAlerts={() => handleSelectTab('alerts')}
+            onNavigateToTraffic={() => handleSelectTab('traffic')}
             capabilities={capabilities}
           />
         );
       case 'devices':
-        return <DevicesPage capabilities={capabilities} />;
+        return (
+          <DevicesPage 
+            capabilities={capabilities} 
+            queryParams={queryParams}
+            onQueryChange={(params) => navigate('devices', undefined, params)}
+          />
+        );
       case 'topology':
         return <TopologyPage capabilities={capabilities} />;
       case 'alerts':
@@ -66,15 +79,21 @@ export const App: React.FC = () => {
       case 'schedules':
         return <SchedulesPage capabilities={capabilities} />;
       case 'routers':
-        return <RoutersPage capabilities={capabilities} />;
+        return (
+          <RoutersPage 
+            capabilities={capabilities} 
+            initialSubTab={currentSubTab}
+            onSubTabChange={(sub) => navigate('routers', sub)}
+          />
+        );
       case 'settings':
         return <SettingsPage />;
       default:
         return (
           <DashboardPage
-            onNavigateToDevices={() => setCurrentTab('devices')}
-            onNavigateToAlerts={() => setCurrentTab('alerts')}
-            onNavigateToTraffic={() => setCurrentTab('traffic')}
+            onNavigateToDevices={() => handleSelectTab('devices')}
+            onNavigateToAlerts={() => handleSelectTab('alerts')}
+            onNavigateToTraffic={() => handleSelectTab('traffic')}
             capabilities={capabilities}
           />
         );
@@ -88,19 +107,15 @@ export const App: React.FC = () => {
       <Header
         onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         isMobileMenuOpen={isMobileMenuOpen}
-        onNavigateToAlerts={() => setCurrentTab('alerts')}
-        onNavigateToRouters={() => setCurrentTab('routers')}
+        onNavigateToAlerts={() => handleSelectTab('alerts')}
+        onNavigateToRouters={() => handleSelectTab('routers')}
       />
 
       <div className="flex-1 flex w-full overflow-hidden">
         {/* Fixed Desktop Sidebar - Stays fixed on left */}
         <Sidebar
           currentTab={currentTab}
-          onSelectTab={(tab) => {
-            setCurrentTab(tab);
-            const mainEl = document.getElementById('main-scroll-area');
-            if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onSelectTab={handleSelectTab}
           capabilities={capabilities}
           unreadAlertsCount={unreadAlertsCount}
         />
@@ -115,10 +130,8 @@ export const App: React.FC = () => {
       <MobileNav
         currentTab={currentTab}
         onSelectTab={(tab) => {
-          setCurrentTab(tab);
+          handleSelectTab(tab);
           setIsMobileMenuOpen(false);
-          const mainEl = document.getElementById('main-scroll-area');
-          if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         unreadCount={unreadAlertsCount}
         isDrawerOpen={isMobileMenuOpen}
