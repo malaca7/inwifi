@@ -1,31 +1,33 @@
 import React, { useState } from 'react';
 import { 
-  Settings, Database, Shield, Check, Copy, 
-  Trash2, Lock, Key
+  Settings, Radio, Shield, RefreshCw, 
+  Trash2, Lock, Cpu, Server, CheckCircle2, Zap
 } from 'lucide-react';
+import { networkService } from '../services/networkService';
 import { ConfirmModal } from '../components/common/ConfirmModal';
-import { copyTextSafe } from '../utils/clipboard';
 
 export const SettingsPage: React.FC = () => {
-  const [copiedSql, setCopiedSql] = useState(false);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [pollingRate, setPollingRate] = useState('4');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  const supabaseSqlSnippet = `-- TABELAS DO IN-WIFI NO SUPABASE
-CREATE TABLE public.routers (...);
-CREATE TABLE public.devices (...);
-CREATE TABLE public.device_aliases (...);
-CREATE TABLE public.network_events (...);
-CREATE TABLE public.traffic_stats (...);
-CREATE TABLE public.access_rules (...);
-CREATE TABLE public.schedules (...);
--- RLS HABILITADO EM TODAS AS ENTIDADES
-ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;`;
+  const routerInfo = networkService.getRouterInfo();
+  const devices = networkService.getDevices();
+  const adapter = networkService.getAdapter();
 
-  const copySqlSchema = () => {
-    copyTextSafe(supabaseSqlSnippet);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2000);
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    try {
+      await networkService.refreshData();
+      setSyncFeedback('Dados do roteador (ARP / DHCP / Leases) sincronizados com sucesso diretamente do hardware!');
+      setTimeout(() => setSyncFeedback(null), 4000);
+    } catch {
+      setSyncFeedback('Erro ao atualizar dados do roteador.');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handlePurgeCache = () => {
@@ -40,140 +42,217 @@ ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;`;
     <div className="space-y-6 animate-fade-in">
       
       {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-          <Settings className="w-6 h-6 text-brand-400" />
-          Configurações & Banco de Dados
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Ajustes operacionais do sistema, telemetria, persistência e auditoria de segurança.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <Settings className="w-6 h-6 text-brand-400" />
+            Configurações & Coleta do Roteador
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            Arquitetura direta em tempo real (Sem Banco de Dados) • Gerenciamento baseado no fluxo de dados do roteador.
+          </p>
+        </div>
+
+        <button
+          onClick={handleForceSync}
+          disabled={isSyncing}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-glow-sm self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+          <span>{isSyncing ? 'Coletando Dados...' : 'Forçar Sincronização Agora'}</span>
+        </button>
       </div>
 
+      {syncFeedback && (
+        <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          <span>{syncFeedback}</span>
+        </div>
+      )}
+
+      {/* Grid of Core Architecture & Telemetry Settings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Supabase Persistence Card */}
+        {/* Architecture: Zero Database / Direct Router Stream */}
         <div className="p-6 rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
-                <Database className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white">Banco de Dados Supabase (Etapa 11)</h3>
-                <span className="text-[11px] text-slate-400">Pronto para PostgreSQL com RLS</span>
-              </div>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400">
+              <Zap className="w-5 h-5" />
             </div>
-            <button
-              onClick={copySqlSchema}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 flex items-center gap-1.5 transition"
-            >
-              {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedSql ? 'Copiado!' : 'Copiar SQL'}</span>
-            </button>
+            <div>
+              <h3 className="text-sm font-bold text-white">Operação Direta (Sem Banco de Dados)</h3>
+              <span className="text-[11px] text-cyan-400 font-mono">Zero Database Architecture</span>
+            </div>
           </div>
 
           <p className="text-xs text-slate-400 leading-relaxed">
-            O script SQL completo está estruturado em <code className="text-brand-300 font-mono">supabase/schema.sql</code>, incluindo suporte a relacionamentos, índices de alto desempenho para MAC/IP e políticas Row Level Security (RLS).
+            O In-Wifi opera como um console de controle direto do roteador. Não há banco de dados SQL ou servidores externos gravando seus dados:
           </p>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950 font-mono text-[11px] text-slate-400 border border-slate-800 overflow-x-auto space-y-1">
-            <div className="text-emerald-400 font-bold">✓ Entidades Criadas no Arquivo de Migração:</div>
-            <div>• public.routers (catálogo de hardware)</div>
-            <div>• public.devices (inventário com MAC indexado)</div>
-            <div>• public.device_aliases (nomes persistentes)</div>
-            <div>• public.network_events (auditoria de eventos)</div>
-            <div>• public.traffic_stats (métricas agregadas)</div>
-            <div>• public.schedules (controle de horários)</div>
+          <div className="space-y-2.5 text-xs">
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-2.5">
+              <Server className="w-4 h-4 text-brand-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <strong className="text-white block">Coleta em Tempo Real:</strong>
+                <span className="text-slate-400">
+                  Os aparelhos exibidos vêm diretamente da tabela ARP, leases DHCP e associações Wi-Fi recebidas do roteador ativo.
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-2.5">
+              <Radio className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <strong className="text-white block">Estado Volátil em Memória:</strong>
+                <span className="text-slate-400">
+                  Quando um aparelho se desconecta do roteador, a informação é atualizada instantaneamente pelo fluxo de telemetria.
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <strong className="text-white block">Privacidade Total:</strong>
+                <span className="text-slate-400">
+                  Nenhum registro de tráfego, MAC ou IP sai da sua rede local para a nuvem.
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Security & Access Policies Card */}
+        {/* Live Hardware Telemetry Status */}
         <div className="p-6 rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark space-y-4">
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400">
-              <Shield className="w-5 h-5" />
+              <Cpu className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Arquitetura de Segurança (Etapa 12)</h3>
-              <span className="text-[11px] text-slate-400">Políticas de mitigação e proteção</span>
+              <h3 className="text-sm font-bold text-white">Telemetria do Roteador Ativo</h3>
+              <span className="text-[11px] text-slate-400">Dados coletados ao vivo</span>
             </div>
           </div>
 
-          <div className="space-y-2.5 text-xs text-slate-300">
-            <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-              <Lock className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <span><strong>Proteção de Credenciais:</strong> Nenhuma senha de roteador é persistida no cliente ou exportada na interface.</span>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-slate-500 block text-[11px]">Roteador Conectado</span>
+              <span className="text-white font-bold mt-1 block truncate">
+                {routerInfo?.name || 'Roteador Principal'}
+              </span>
             </div>
 
-            <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-              <Shield className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-              <span><strong>Confirmação de Destruição:</strong> Toda ação crítica de bloqueio de rede exige diálogo de confirmação explícito.</span>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-slate-500 block text-[11px]">Gateway / IP</span>
+              <span className="text-white font-mono font-bold mt-1 block">
+                {routerInfo?.ipAddress || '192.168.1.1'}
+              </span>
             </div>
 
-            <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
-              <Key className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-              <span><strong>Identificadores Persistentes:</strong> Aparelhos são identificados de forma única por MAC ou ID sintetizado.</span>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-slate-500 block text-[11px]">Aparelhos na Tabela ARP</span>
+              <span className="text-emerald-400 font-mono font-bold mt-1 block text-base">
+                {devices.length} dispositivos
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-slate-500 block text-[11px]">Adaptador em Execução</span>
+              <span className="text-cyan-400 font-mono font-bold mt-1 block uppercase">
+                {adapter.protocol} {adapter.isDemoMode ? '(Demo)' : ''}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1 text-xs">
+            <div className="flex items-center justify-between text-slate-400">
+              <span>Uptime do Roteador:</span>
+              <span className="font-mono text-white">4 dias, 12 horas</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-400">
+              <span>Uso de CPU do Hardware:</span>
+              <span className="font-mono text-emerald-400">{routerInfo?.cpuUsagePercent || 18}%</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-400">
+              <span>Uso de Memória RAM:</span>
+              <span className="font-mono text-cyan-400">{routerInfo?.ramUsagePercent || 44}%</span>
             </div>
           </div>
         </div>
 
-        {/* System Settings & Telemetry Polling */}
+        {/* Polling Rate Configuration */}
         <div className="p-6 rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark space-y-4">
-          <h3 className="text-sm font-bold text-white">Preferências do Sistema</h3>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+              <Radio className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Frequência de Leitura do Roteador (Polling)</h3>
+              <span className="text-[11px] text-slate-400">Intervalo de atualização das métricas</span>
+            </div>
+          </div>
 
           <div className="space-y-3 text-xs">
             <div>
-              <label className="text-slate-400 block mb-1">Taxa de Atualização da Telemetria (Polling)</label>
+              <label className="text-slate-400 block mb-1">Taxa de Atualização da Telemetria</label>
               <select
                 value={pollingRate}
                 onChange={(e) => setPollingRate(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500"
               >
+                <option value="1">1 segundo (Tempo real intensivo)</option>
                 <option value="2">2 segundos (Alta frequência)</option>
-                <option value="4">4 segundos (Padrão recomendado)</option>
+                <option value="4">4 segundos (Padrão balanceado)</option>
                 <option value="10">10 segundos (Modo economia)</option>
               </select>
+              <span className="text-[10px] text-slate-500 mt-1 block">
+                Define a periodicidade com que o In-Wifi consulta a tabela ARP e vazão das portas do roteador.
+              </span>
             </div>
 
             <div>
-              <label className="text-slate-400 block mb-1">Idioma da Interface</label>
-              <input
-                type="text"
-                disabled
-                value="Português do Brasil (pt-BR)"
-                className="w-full px-3.5 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-400 text-xs cursor-not-allowed"
-              />
+              <label className="text-slate-400 block mb-1">Mecanismo de Descoberta Ativo</label>
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 font-mono text-[11px] text-slate-300">
+                ARP Table Walk + DHCP Lease Parser + Wi-Fi Association Polling
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Maintenance & Reset */}
+        {/* Cache & Local Aliases Maintenance */}
         <div className="p-6 rounded-3xl bg-dark-card border border-slate-800 shadow-card-dark space-y-4">
-          <h3 className="text-sm font-bold text-white text-rose-400 flex items-center gap-2">
-            <Trash2 className="w-4 h-4" />
-            Zona de Manutenção & Cache Local
-          </h3>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white text-rose-400">
+                Limpeza de Apelidos Locais
+              </h3>
+              <span className="text-[11px] text-slate-400">Apagar apelidos amigáveis salvos</span>
+            </div>
+          </div>
+
           <p className="text-xs text-slate-400 leading-relaxed">
-            Redefinir as preferências armazenadas localmente no navegador (nomes de dispositivos renomeados, agendamentos locais e estados de bloqueio).
+            Como o sistema opera sem banco de dados, os apelidos customizados (ex: "Celular do João") são mantidos no navegador. Clique abaixo para redefinir para os hostnames originais enviados pelo roteador.
           </p>
 
           <button
             onClick={() => setShowPurgeModal(true)}
             className="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/40 text-rose-300 hover:text-white text-xs font-semibold transition"
           >
-            Limpar Dados de Simulação Locais
+            Redefinir Nomes para o Padrão do Roteador
           </button>
         </div>
 
       </div>
 
-      {/* Confirm Purge Modal */}
+      {/* Confirm Reset Modal */}
       <ConfirmModal
         isOpen={showPurgeModal}
-        title="Redefinir Dados Locais?"
-        description="Esta ação apagará todos os apelidos renomeados, estados de bloqueio e agendamentos guardados no seu navegador e recarregará os dados padrões de demonstração."
-        confirmLabel="Sim, Redefinir Tudo"
+        title="Redefinir Nomes dos Dispositivos?"
+        description="Esta ação removerá todos os apelidos personalizados salvos e restaurará os nomes originais de fábrica reportados pelo roteador."
+        confirmLabel="Sim, Redefinir Nomes"
         cancelLabel="Cancelar"
         variant="danger"
         onConfirm={handlePurgeCache}

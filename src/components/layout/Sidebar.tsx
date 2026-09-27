@@ -136,11 +136,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer Info */}
       <div className="pt-4 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
         <div className="flex items-center justify-between">
-          <span>In-Wifi Enterprise</span>
-          <span className="font-mono text-slate-400">v1.2.0</span>
+          <span>In-Wifi LAN Console</span>
+          <span className="font-mono text-emerald-400 text-[10px]">Zero DB Mode</span>
         </div>
         <p className="text-[10px] text-slate-400">
-          Baseada em Router Adapter Layer
+          Coleta direta do fluxo do roteador
         </p>
       </div>
     </aside>
