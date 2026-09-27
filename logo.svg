@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0066FF"/>
+      <stop offset="50%" stop-color="#00D2FF"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#06080F"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded card -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" stroke="#1E293B" stroke-width="8"/>
+
+  <!-- Glowing subtle circular grid -->
+  <circle cx="256" cy="256" r="180" stroke="#1E3A8A" stroke-width="2" stroke-dasharray="6 8" opacity="0.4"/>
+  <circle cx="256" cy="256" r="120" stroke="#1E3A8A" stroke-width="2" stroke-dasharray="4 6" opacity="0.4"/>
+
+  <!-- Wifi Signal Waves -->
+  <path d="M112 186 C152 144 202 120 256 120 C310 120 360 144 400 186" 
+        stroke="url(#primaryGrad)" stroke-width="24" stroke-linecap="round" filter="url(#glow)"/>
+  
+  <path d="M160 238 C186 210 220 194 256 194 C292 194 326 210 352 238" 
+        stroke="url(#primaryGrad)" stroke-width="22" stroke-linecap="round"/>
+
+  <path d="M208 290 C222 274 238 266 256 266 C274 266 290 274 304 290" 
+        stroke="url(#primaryGrad)" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Central Pulse Core / Connected Node -->
+  <circle cx="256" cy="350" r="28" fill="url(#primaryGrad)" filter="url(#glow)"/>
+  <circle cx="256" cy="350" r="12" fill="#FFFFFF"/>
+
+  <!-- Network Intersect Lines -->
+  <line x1="256" y1="378" x2="256" y2="430" stroke="#00D2FF" stroke-width="6" stroke-linecap="round" stroke-dasharray="6 6"/>
+  <circle cx="256" cy="438" r="8" fill="#00D2FF"/>
+</svg>

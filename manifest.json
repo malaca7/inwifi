@@ -1,0 +1,18 @@
+{
+  "name": "In-Wifi — Gerenciador Profissional de Rede",
+  "short_name": "In-Wifi",
+  "description": "Painel profissional para gerenciamento de rede LAN, roteadores e dispositivos conectados.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06080F",
+  "theme_color": "#0066FF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
